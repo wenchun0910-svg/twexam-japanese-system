@@ -1,7 +1,7 @@
-# 國小定期評量即時管理系統 (日式和風美學版)
-# Taiwan Elementary School Realtime Exam Administration System
+# 臺中市西屯區長安國小 定期評量即時管理系統 (日式和風美學版)
+# Taichung Chang'an Elementary School Realtime Exam Administration System
 
-> 專為**臺灣公私立國民小學（一至六年級）**打造的定期評量（定期成績評量/段考）即時管理系統。  
+> 專為**臺中市西屯區長安國小（一至六年級）**打造的定期評量（定期成績評量/段考）即時管理系統。  
 > 具備教室監考端、電子黑板端與教務行政端三端即時同步，支援**「班級與導師一對一配對設定」**、**「預設全新空白架構」**，採用日式和風（Wabi-Sabi・日本の伝統色）視覺風格設計，文字採用臺灣正體繁體中文，支援 Google Cloud Firebase (Firestore) 雲端即時資料庫與跨裝置零延遲同步。
 
 ---

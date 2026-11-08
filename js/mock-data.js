@@ -6,7 +6,7 @@
 // 1. 全新空白資料結構 (預設清空所有資料)
 window.EMPTY_EXAM_DATA = {
   config: {
-    schoolName: "國民小學",
+    schoolName: "臺中市西屯區長安國小",
     academicYear: "114學年度第1學期",
     examName: "第二次定期成績評量",
     examDate: new Date().toISOString().split('T')[0],
@@ -38,7 +38,7 @@ window.EMPTY_EXAM_DATA = {
 // 2. 臺灣國小示範資料模本 (一至六年級，每班對應一位專屬導師/監考老師)
 window.ELEMENTARY_TEMPLATE_DATA = {
   config: {
-    schoolName: "臺灣市立明倫國民小學",
+    schoolName: "臺中市西屯區長安國小",
     academicYear: "114學年度第1學期",
     examName: "第二次定期評量（定期考查）",
     examDate: new Date().toISOString().split('T')[0],

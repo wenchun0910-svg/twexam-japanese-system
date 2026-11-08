@@ -30,6 +30,9 @@ class ExamApp {
           localStorage.removeItem('TW_EXAM_LOCAL_STATE');
           return JSON.parse(JSON.stringify(window.EMPTY_EXAM_DATA));
         }
+        if (parsed.config && (!parsed.config.schoolName || parsed.config.schoolName === '國民小學' || parsed.config.schoolName === '測試學校' || parsed.config.schoolName === '臺灣市立明倫國民小學')) {
+          parsed.config.schoolName = "臺中市西屯區長安國小";
+        }
         return parsed;
       }
     } catch (e) {
@@ -203,8 +206,8 @@ class ExamApp {
           <a href="#admin" class="brand-group">
             <div class="brand-emblem">評</div>
             <div class="brand-info">
-              <h1>${this.escapeHtml(this.state.config.schoolName || '國民小學定期評量系統')}</h1>
-              <p>${this.escapeHtml(this.state.config.academicYear || '')}・${this.escapeHtml(this.state.config.examName || '定期成績評量')} <span class="stamp stamp-shuin">國小考務</span></p>
+              <h1>${this.escapeHtml(this.state.config.schoolName || '臺中市西屯區長安國小')}</h1>
+              <p>${this.escapeHtml(this.state.config.academicYear || '')}・${this.escapeHtml(this.state.config.examName || '定期成績評量')} <span class="stamp stamp-shuin">長安國小考務</span></p>
             </div>
           </a>
 
