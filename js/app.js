@@ -137,28 +137,38 @@ class ExamApp {
       return { success: true };
     }
 
-    // 支援教師/導師登入 (密碼 12345678 或帳號)
+    // 支援教師/導師登入：可使用 教師姓名、班級全稱 (如一年一班)、班級代碼 (如101)、或帳號
     const teacher = (this.state.teachers || []).find(t => 
-      t.username.toLowerCase() === username.toLowerCase() || t.name === username
+      t.username.toLowerCase() === username.toLowerCase() ||
+      t.name === username ||
+      t.assignedClassName === username ||
+      t.assignedClassId === username ||
+      ('t' + t.assignedClassId) === username.toLowerCase()
     );
-    if (teacher && (password === '12345678' || password === teacher.username)) {
-      this.currentUser = {
-        id: teacher.id,
-        name: teacher.name,
-        username: teacher.username,
-        role: teacher.role || 'invigilator',
-        assignedClassId: teacher.assignedClassId || '',
-        assignedClassName: teacher.assignedClassName || '',
-        department: teacher.department
-      };
-      sessionStorage.setItem('TW_EXAM_USER', JSON.stringify(this.currentUser));
-      this.updateState(() => {}, '導師登入', `導師 ${teacher.name}（負責：${teacher.assignedClassName || '未指派'}）登入成功`);
-      window.soundFX.playChime();
-      this.navigate('invigilator');
-      return { success: true };
+
+    if (teacher) {
+      const isPwdMatch = (teacher.password && teacher.password === password) ||
+                         (password === '12345678') ||
+                         (password === teacher.username);
+      if (isPwdMatch) {
+        this.currentUser = {
+          id: teacher.id,
+          name: teacher.name,
+          username: teacher.username,
+          role: teacher.role || 'invigilator',
+          assignedClassId: teacher.assignedClassId || '',
+          assignedClassName: teacher.assignedClassName || '',
+          department: teacher.department
+        };
+        sessionStorage.setItem('TW_EXAM_USER', JSON.stringify(this.currentUser));
+        this.updateState(() => {}, '導師登入', `導師 ${teacher.name}（負責：${teacher.assignedClassName || '未指派'}）登入成功`);
+        window.soundFX.playChime();
+        this.navigate('invigilator');
+        return { success: true };
+      }
     }
 
-    return { success: false, message: '帳號或密碼錯誤。測試帳號：test 密碼：12345678' };
+    return { success: false, message: '帳號或密碼錯誤。管理員：test / 12345678，或使用導師姓名/班級與專屬密碼登入' };
   }
 
   logout() {
@@ -380,7 +390,7 @@ class ExamApp {
               <span>🏫</span> 前往「班級與導師設定」新增班級
             </button>
             <button class="btn btn-secondary btn-lg" onclick="window.app.loadElementaryTemplate()">
-              <span>⚡</span> 載入國小示範班級（1~6年級與導師配對）
+              <span>⚡</span> 載入長安國小32班與導師名冊 (含密碼)
             </button>
           </div>
         </div>
@@ -543,11 +553,14 @@ class ExamApp {
             </p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" onclick="window.app.openAddClassModal()">
+            <button class="btn btn-primary btn-sm" onclick="window.app.openImportCsvModal()">
+              <span>📥</span> 批次匯入名冊 (CSV)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.openAddClassModal()">
               <span>➕</span> 新增單一班級
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.app.batchGenerateElementaryClasses()">
-              <span>⚡</span> 批次生成國小全校班級 (1~6年級)
+              <span>⚡</span> 載入長安國小32班
             </button>
             ${classrooms.length > 0 ? `
               <button class="btn btn-danger btn-sm" onclick="window.app.clearAllClasses()">
@@ -563,11 +576,16 @@ class ExamApp {
               目前尚未建立任何班級！
             </p>
             <p style="font-size:0.85rem; color:var(--c-ink-sub); margin-bottom:16px;">
-              請點擊上方「➕ 新增單一班級」，或點擊「⚡ 批次生成國小全校班級」一鍵自動建立一至六年級各班與對應老師！
+              您可直接點擊「📥 批次匯入名冊 (CSV)」上傳檔案或貼上文字，或一鍵載入長安國小全校 32 班！
             </p>
-            <button class="btn btn-primary btn-sm" onclick="window.app.batchGenerateElementaryClasses()">
-              ⚡ 立即自動建立 1~6 年級班級與老師
-            </button>
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="window.app.openImportCsvModal()">
+                <span>📥</span> 批次匯入名冊 (CSV / 文字)
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.batchGenerateElementaryClasses()">
+                <span>⚡</span> 一鍵載入長安國小32班與導師
+              </button>
+            </div>
           </div>
         ` : `
           <div style="overflow-x:auto;">
@@ -887,16 +905,16 @@ class ExamApp {
     }, '指派導師', `考場 ${classId} 對應導師：${teacher ? teacher.name : '無'}`);
   }
 
-  // 一鍵批次生成國小全校班級 (1~6年級，每班對應一位老師)
+  // 一鍵載入長安國小全校班級與導師名冊
   batchGenerateElementaryClasses() {
-    if (confirm('確定要一鍵生成國小一至六年級（1~6年級各2班，共12班）與各班對應導師嗎？')) {
+    if (confirm('確定要載入臺中市西屯區長安國小全校 32 班（一至六年級）與 32 位專屬導師名冊與密碼嗎？')) {
       const sample = JSON.parse(JSON.stringify(window.ELEMENTARY_TEMPLATE_DATA));
       this.updateState(state => {
         state.classrooms = sample.classrooms;
         state.teachers = sample.teachers;
         state.config.periods = sample.config.periods;
-      }, '批次建立國小班級', '一鍵建立一至六年級12個班級，並完成導師一對一配對');
-      alert('已成功建立國小全校班級與各班對應導師！');
+      }, '批次建立長安國小班級', '一鍵載入長安國小32班與32位導師專屬密碼');
+      alert('已成功載入長安國小全校 32 個班級與 32 位對應導師！');
     }
   }
 
@@ -914,6 +932,238 @@ class ExamApp {
   }
 
   // ----------------------------------------------------
+  // CSV 批次匯入與匯出模組 (支援：班級,姓名,密碼)
+  // ----------------------------------------------------
+  openImportCsvModal() {
+    const modalHtml = `
+      <div class="modal-overlay" id="modal-import-csv">
+        <div class="modal-dialog" style="max-width:700px;">
+          <div class="modal-header">
+            <h3>📥 批次匯入班級、導師名冊與專屬密碼 (CSV)</h3>
+            <button class="modal-close-btn" onclick="window.app.closeModal('modal-import-csv')">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:14px;">
+              <p style="font-size:0.85rem; font-weight:700; color:var(--c-ink); margin-bottom:4px;">
+                📋 支援檔案格式：<code>班級,姓名,密碼</code>（首行表頭自動識別）
+              </p>
+              <p style="font-size:0.8rem; color:var(--c-ink-sub); line-height:1.5;">
+                每行一筆，例如：<code>一年一班,廖O秀,shiou216</code>。<br>
+                系統將自動解析一至六年級班級代碼、建立/對應班級，並為每位導師設定專屬登入密碼。
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>上傳 CSV / TXT 檔案</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.fillChanganCsvSample()">
+                  📋 填入長安國小 32 班名冊範例
+                </button>
+              </label>
+              <input type="file" id="csv-file-upload" class="form-control" accept=".csv,.txt" onchange="window.app.handleCsvFileSelect(event)">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">或直接在此貼上名冊文字內容：</label>
+              <textarea id="csv-paste-area" class="form-control" rows="8" style="font-family:var(--font-mono); font-size:0.82rem; line-height:1.5;" placeholder="班級,姓名,密碼&#10;一年一班,廖O秀,shiou216&#10;一年二班,邱O菁,ma640420&#10;..."></textarea>
+            </div>
+
+            <div class="form-group" style="margin-top:10px;">
+              <label class="form-label">匯入模式選擇：</label>
+              <div style="display:flex; gap:20px; font-size:0.85rem;">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="radio" name="import-mode" value="sync" checked>
+                  <strong>同步配對模式</strong>（更新既有班級導師，自動補足缺少的班級）
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                  <input type="radio" name="import-mode" value="overwrite">
+                  <strong style="color:var(--c-hiiro);">全新覆蓋模式</strong>（清空現有班級與導師，完全以此名冊重新建立）
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal('modal-import-csv')">取消</button>
+            <button class="btn btn-primary btn-sm" onclick="window.app.executeCsvImport()">
+              <span>🚀</span> 開始解析並匯入
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    this.showModalContainer(modalHtml);
+  }
+
+  handleCsvFileSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const area = document.getElementById('csv-paste-area');
+      if (area) area.value = text;
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  fillChanganCsvSample() {
+    const area = document.getElementById('csv-paste-area');
+    if (area && window.CHANGAN_CSV_RAW) {
+      area.value = window.CHANGAN_CSV_RAW;
+    }
+  }
+
+  parseCsvText(rawText) {
+    if (!rawText) return [];
+    const digits = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    const results = [];
+
+    lines.forEach((line, idx) => {
+      // 略過表頭行
+      if (idx === 0 && (line.includes('班級') || line.includes('姓名') || line.includes('密碼'))) {
+        return;
+      }
+      const parts = line.split(/[,\t]/).map(s => s.trim().replace(/^["']|["']$/g, ''));
+      if (parts.length >= 2) {
+        const className = parts[0];
+        const teacherName = parts[1];
+        const password = parts[2] || '12345678';
+
+        let grade = 1;
+        let classNum = 1;
+        const m = className.match(/([一二三四五六七八九1-9])年([一二三四五六七八九1-9]+)班/);
+        if (m) {
+          grade = digits[m[1]] || Number(m[1]) || 1;
+          classNum = digits[m[2]] || Number(m[2]) || 1;
+        } else {
+          const numMatch = className.match(/^(\d)(\d{2})$/);
+          if (numMatch) {
+            grade = Number(numMatch[1]);
+            classNum = Number(numMatch[2]);
+          }
+        }
+        const classId = `${grade}${classNum < 10 ? '0' + classNum : classNum}`;
+
+        results.push({
+          className,
+          teacherName,
+          password,
+          grade,
+          classNum,
+          classId
+        });
+      }
+    });
+
+    return results;
+  }
+
+  executeCsvImport() {
+    const rawText = (document.getElementById('csv-paste-area')?.value || '').trim();
+    if (!rawText) return alert('請貼上 CSV 文字或選取檔案！');
+
+    const parsed = this.parseCsvText(rawText);
+    if (parsed.length === 0) {
+      return alert('未在內容中解析出有效的班級與導師資料，請確認格式為：班級,姓名,密碼');
+    }
+
+    const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'sync';
+
+    this.updateState(state => {
+      if (mode === 'overwrite') {
+        state.classrooms = [];
+        state.teachers = [];
+      }
+
+      parsed.forEach(item => {
+        const teacherId = 'tch-' + item.classId;
+
+        // 1. 更新或建立教師
+        let teacher = state.teachers.find(t => t.id === teacherId || t.name === item.teacherName || t.assignedClassId === item.classId);
+        if (teacher) {
+          teacher.name = item.teacherName;
+          teacher.username = item.classId;
+          teacher.password = item.password;
+          teacher.assignedClassId = item.classId;
+          teacher.assignedClassName = item.className;
+          teacher.department = `${item.grade}年級導師`;
+        } else {
+          teacher = {
+            id: teacherId,
+            name: item.teacherName,
+            username: item.classId,
+            password: item.password,
+            department: `${item.grade}年級導師`,
+            role: 'invigilator',
+            assignedClassId: item.classId,
+            assignedClassName: item.className
+          };
+          state.teachers.push(teacher);
+        }
+
+        // 2. 更新或建立班級
+        let cls = state.classrooms.find(c => c.classId === item.classId);
+        if (cls) {
+          cls.className = item.className;
+          cls.grade = item.grade;
+          cls.assignedTeacherId = teacher.id;
+          cls.assignedTeacherName = item.teacherName;
+          cls.invigilator = item.teacherName;
+          if (!cls.periodInvigilatorNames) cls.periodInvigilatorNames = {};
+          cls.periodInvigilatorNames["period-1"] = item.teacherName;
+          cls.periodInvigilatorNames["period-2"] = item.teacherName;
+          cls.periodInvigilatorNames["period-3"] = item.teacherName;
+          cls.periodInvigilatorNames["period-4"] = item.teacherName;
+        } else {
+          cls = {
+            classId: item.classId,
+            grade: item.grade,
+            className: item.className,
+            expectedCount: 25,
+            presentCount: 0,
+            absentCount: 0,
+            absentStudents: [],
+            statusReported: false,
+            lastUpdated: null,
+            assignedTeacherId: teacher.id,
+            assignedTeacherName: item.teacherName,
+            invigilator: item.teacherName,
+            periodInvigilatorNames: {
+              "period-1": item.teacherName,
+              "period-2": item.teacherName,
+              "period-3": item.teacherName,
+              "period-4": item.teacherName
+            }
+          };
+          state.classrooms.push(cls);
+        }
+      });
+
+      state.classrooms.sort((a, b) => a.grade - b.grade || a.classId.localeCompare(b.classId));
+      state.teachers.sort((a, b) => (a.assignedClassId || '').localeCompare(b.assignedClassId || ''));
+    }, '批次匯入名冊', `成功匯入 ${parsed.length} 筆班級、導師與專屬密碼`);
+
+    window.soundFX.playChime();
+    this.closeModal('modal-import-csv');
+    alert(`🎉 成功匯入 ${parsed.length} 位導師與對應班級！\n老師們現在可以使用自己的姓名或班級代碼搭配專屬密碼登入。`);
+    this.render();
+  }
+
+  // 匯出教師與班級密碼清冊 (CSV)
+  exportTeachersCsv() {
+    let csv = "\uFEFF班級,姓名,密碼\n";
+    (this.state.teachers || []).forEach(t => {
+      csv += `"${t.assignedClassName || ''}","${t.name}","${t.password || '12345678'}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `長安國小導師與班級密碼清冊_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  }
+
+  // ----------------------------------------------------
   // 1.3 教師帳號管理 (Teachers Tab)
   // ----------------------------------------------------
   renderTeachersTab() {
@@ -924,39 +1174,44 @@ class ExamApp {
       <div class="jp-card">
         <div class="jp-card-header">
           <div>
-            <h2 class="jp-card-title"><span>👥</span> 國小教師名冊與對應班級管理</h2>
+            <h2 class="jp-card-title"><span>👥</span> 國小教師名冊、對應班級與專屬密碼管理</h2>
             <p style="font-size:0.8rem; color:var(--c-ink-sub); margin-top:4px;">
-              維護全校教師、導師帳號，並確認每個老師對應負責的班級。預設密碼均為 <code style="font-family:var(--font-mono); font-weight:700;">12345678</code>。
+              維護全校各班導師名冊與專屬登入密碼，支援以 <code>班級,姓名,密碼</code> 格式進行 CSV 批次匯入匯出。
             </p>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="window.app.openAddTeacherModal()">
-            <span>➕</span> 新增教師帳號
-          </button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="window.app.openImportCsvModal()">
+              <span>📥</span> 批次匯入名冊 (CSV)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.exportTeachersCsv()">
+              <span>📤</span> 匯出名冊 (CSV)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.openAddTeacherModal()">
+              <span>➕</span> 新增教師帳號
+            </button>
+          </div>
         </div>
 
         ${list.length === 0 ? `
           <div style="text-align:center; padding:30px; color:var(--c-ink-sub);">
-            目前尚無教師資料。請點擊上方「➕ 新增教師帳號」，或在「班級設定」中一鍵生成。
+            目前尚無教師資料。請點擊上方「📥 批次匯入名冊 (CSV)」或「➕ 新增教師帳號」。
           </div>
         ` : `
           <table class="jp-table">
             <thead>
               <tr>
-                <th>教師姓名</th>
-                <th>登入帳號</th>
-                <th>職稱 / 科別</th>
-                <th>對應負責班級 (一對一配對)</th>
-                <th>考務角色</th>
-                <th>預設密碼</th>
-                <th>操作</th>
+                <th style="width:130px;">教師姓名</th>
+                <th style="width:150px;">對應班級 (一對一配對)</th>
+                <th style="width:160px;">專屬登入密碼</th>
+                <th>登入帳號識別</th>
+                <th style="width:120px;">身分 / 角色</th>
+                <th style="width:90px;">操作</th>
               </tr>
             </thead>
             <tbody>
               ${list.map(t => `
                 <tr>
-                  <td><strong>${this.escapeHtml(t.name)}</strong></td>
-                  <td><code style="font-family:var(--font-mono);">${this.escapeHtml(t.username)}</code></td>
-                  <td>${this.escapeHtml(t.department || '教師')}</td>
+                  <td><strong style="font-size:1.05rem;">${this.escapeHtml(t.name)}</strong></td>
                   <td>
                     ${t.assignedClassName ? `
                       <span class="stamp stamp-matcha">對應：${this.escapeHtml(t.assignedClassName)}</span>
@@ -965,11 +1220,19 @@ class ExamApp {
                     `}
                   </td>
                   <td>
+                    <code style="font-family:var(--font-mono); font-weight:700; color:var(--c-ai); background:var(--c-washi-sub); padding:3px 8px; border-radius:var(--radius-sm); border:1px solid var(--c-border);">
+                      ${this.escapeHtml(t.password || '12345678')}
+                    </code>
+                  </td>
+                  <td>
+                    <code style="font-family:var(--font-mono);">${this.escapeHtml(t.username)}</code>
+                    <small style="color:var(--c-ink-light); display:block; font-size:0.7rem;">(亦可用姓名或「${t.assignedClassName || t.username}」登入)</small>
+                  </td>
+                  <td>
                     <span class="stamp ${t.role === 'author' ? 'stamp-shuin' : 'stamp-ai'}">
                       ${t.role === 'author' ? '出題老師' : '班級導師/監考'}
                     </span>
                   </td>
-                  <td style="font-family:var(--font-mono); color:var(--c-ink-sub);">12345678</td>
                   <td>
                     <button class="btn btn-danger btn-sm" onclick="window.app.deleteTeacher('${t.id}')">刪除</button>
                   </td>
@@ -978,6 +1241,9 @@ class ExamApp {
             </tbody>
           </table>
         `}
+      </div>
+    `;
+  }
       </div>
     `;
   }
@@ -1005,6 +1271,10 @@ class ExamApp {
               <input type="text" id="new-tch-dept" class="form-control" placeholder="例：一年級導師、英語科任" value="班級導師">
             </div>
             <div class="form-group">
+              <label class="form-label">登入密碼</label>
+              <input type="text" id="new-tch-pwd" class="form-control" placeholder="自訂密碼或預設 12345678" value="12345678">
+            </div>
+            <div class="form-group">
               <label class="form-label">對應負責班級 (每個老師對應一個班級)</label>
               <select id="new-tch-class" class="form-select">
                 <option value="">-- 未指派班級 (科任/科展等) --</option>
@@ -1028,6 +1298,7 @@ class ExamApp {
     const name = document.getElementById('new-tch-name').value.trim();
     const user = document.getElementById('new-tch-user').value.trim();
     const dept = document.getElementById('new-tch-dept').value.trim() || '導師';
+    const pwd = document.getElementById('new-tch-pwd')?.value.trim() || '12345678';
     const classId = document.getElementById('new-tch-class').value;
 
     if (!name || !user) return alert('請填寫姓名與帳號！');
@@ -1039,6 +1310,7 @@ class ExamApp {
       id: newId,
       name,
       username: user,
+      password: pwd,
       department: dept,
       role: 'invigilator',
       assignedClassId: classId,
@@ -1054,7 +1326,7 @@ class ExamApp {
         cls.assignedTeacherName = name;
         cls.invigilator = name;
       }
-    }, '新增教師', `建立教師：${name} (${user})，對應班級：${cls ? cls.className : '無'}`);
+    }, '新增教師', `建立教師：${name} (${user})，密碼：${pwd}，對應班級：${cls ? cls.className : '無'}`);
 
     this.closeModal('modal-add-teacher');
   }
@@ -1358,7 +1630,7 @@ class ExamApp {
               <span>🗑️</span> 清空所有資料（空白重頭設定）
             </button>
             <button class="btn btn-secondary btn-sm" onclick="window.app.loadElementaryTemplate()">
-              <span>🏫</span> 載入國小示範設定（1~6年級與導師配對）
+              <span>🏫</span> 載入長安國小32班與導師名冊 (含密碼)
             </button>
           </div>
         </div>
@@ -1411,11 +1683,11 @@ class ExamApp {
 
   // 載入國小示範資料
   loadElementaryTemplate() {
-    if (confirm('確定要載入國小示範設定嗎？這將填入一至六年級班級與12位對應導師。')) {
+    if (confirm('確定要載入臺中市西屯區長安國小全校 32 班（一至六年級）與 32 位專屬導師名冊與密碼嗎？')) {
       this.state = JSON.parse(JSON.stringify(window.ELEMENTARY_TEMPLATE_DATA));
       window.firebaseService.syncState(this.state);
       this.render();
-      alert('已成功載入國小示範資料！');
+      alert('已成功載入長安國小全校 32 個班級與 32 位對應導師及專屬密碼！');
       this.switchAdminTab('matrix');
     }
   }

@@ -1,6 +1,6 @@
 // ========================================================
 // 國小段考（定期成績評量）考務即時管理系統 - 預設資料模組
-// 適用臺灣公私立國民小學（一至六年級・導師與班級一對一對應）
+// 臺中市西屯區長安國小（一至六年級・導師與班級一對一對應）
 // ========================================================
 
 // 1. 全新空白資料結構 (預設清空所有資料)
@@ -35,12 +35,103 @@ window.EMPTY_EXAM_DATA = {
   auditLogs: []
 };
 
-// 2. 臺灣國小示範資料模本 (一至六年級，每班對應一位專屬導師/監考老師)
+// 長安國小 32 班官方名冊 CSV 文字範本
+window.CHANGAN_CSV_RAW = `班級,姓名,密碼
+一年一班,廖O秀,shiou216
+一年二班,邱O菁,ma640420
+一年三班,王O雀,qqaqqz101
+一年四班,陳O婷,u7101007
+二年一班,賴O佩,thylakoi
+二年二班,邱O黛,einna4160
+二年三班,李O怡,shinyili0709
+二年四班,林O婷,let1018
+二年五班,鄭O菁,eiva
+三年一班,黃O苓,shu.ling096
+三年二班,卓O萍,jasephine2002
+三年三班,陳O怡,shin58112
+三年四班,林O彬,jason8899kimo
+三年五班,葉O柔,rosieye323
+四年一班,簡O華,yhchien0635
+四年二班,薛O勤,kimkings2001
+四年三班,陳O苓,chenya0519
+四年四班,梁O勳,zobkimo
+四年五班,李O珊,roobit0819
+四年六班,劉O婕,caijie368
+五年一班,蕭O全,dannel_hsiao
+五年二班,謝O勇,bigyung45
+五年三班,張O媃,minicandy85
+五年四班,姜O雄,panda0928
+五年五班,葉O玲,yehyl1122
+五年六班,管O弘,fysh1114
+六年一班,尤O絹,moon1220
+六年二班,陳O伶,linda6032091225
+六年三班,張O予,leeyu218
+六年四班,盧O輿,fishsiao1776
+六年五班,古O專,asics1112
+六年六班,葉O玲,mozartbooks`;
+
+// 輔助函數：解析中文班級名稱與生成班級代碼
+function buildChanganTemplate() {
+  const digits = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+  const lines = window.CHANGAN_CSV_RAW.trim().split('\n').slice(1);
+  const teachers = [];
+  const classrooms = [];
+
+  lines.forEach(line => {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 3) return;
+    const [className, name, pwd] = parts;
+
+    const m = className.match(/([一二三四五六])年([一二三四五六])班/);
+    const grade = m ? digits[m[1]] : 1;
+    const num = m ? digits[m[2]] : 1;
+    const classId = `${grade}0${num}`;
+    const teacherId = `tch-${classId}`;
+
+    teachers.push({
+      id: teacherId,
+      name: name,
+      username: classId,
+      password: pwd,
+      department: `${grade}年級導師`,
+      role: 'invigilator',
+      assignedClassId: classId,
+      assignedClassName: className
+    });
+
+    classrooms.push({
+      classId: classId,
+      grade: grade,
+      className: className,
+      expectedCount: 25,
+      presentCount: 0,
+      absentCount: 0,
+      absentStudents: [],
+      statusReported: false,
+      lastUpdated: null,
+      assignedTeacherId: teacherId,
+      assignedTeacherName: name,
+      invigilator: name,
+      periodInvigilatorNames: {
+        "period-1": name,
+        "period-2": name,
+        "period-3": name,
+        "period-4": name
+      }
+    });
+  });
+
+  return { teachers, classrooms };
+}
+
+const changanData = buildChanganTemplate();
+
+// 2. 臺中市西屯區長安國小示範資料模本 (全校 32 班與 32 位專屬導師一對一配對)
 window.ELEMENTARY_TEMPLATE_DATA = {
   config: {
     schoolName: "臺中市西屯區長安國小",
     academicYear: "114學年度第1學期",
-    examName: "第二次定期評量（定期考查）",
+    examName: "第二次定期成績評量（定期考查）",
     examDate: new Date().toISOString().split('T')[0],
     subject: "國語",
     startTime: "08:40",
@@ -59,135 +150,8 @@ window.ELEMENTARY_TEMPLATE_DATA = {
       { id: "period-4", date: new Date().toISOString().split('T')[0], startTime: "11:25", endTime: "12:05", subject: "英語 / 社會", grades: [3, 4, 5, 6] }
     ]
   },
-
-  // 每個老師對應一個班級
-  teachers: [
-    { id: "tch-101", name: "王美玲", username: "t101", department: "低年級導師", role: "invigilator", assignedClassId: "101", assignedClassName: "一年一班" },
-    { id: "tch-102", name: "林怡君", username: "t102", department: "低年級導師", role: "invigilator", assignedClassId: "102", assignedClassName: "一年二班" },
-    { id: "tch-201", name: "陳建志", username: "t201", department: "低年級導師", role: "invigilator", assignedClassId: "201", assignedClassName: "二年一班" },
-    { id: "tch-202", name: "張淑芬", username: "t202", department: "低年級導師", role: "invigilator", assignedClassId: "202", assignedClassName: "二年二班" },
-    { id: "tch-301", name: "黃志偉", username: "t301", department: "中年級導師", role: "invigilator", assignedClassId: "301", assignedClassName: "三年一班" },
-    { id: "tch-302", name: "李雅筑", username: "t302", department: "中年級導師", role: "author", assignedClassId: "302", assignedClassName: "三年二班", examAuthorAssignments: [{ subject: "國語", grade: 3 }] },
-    { id: "tch-401", name: "許家榮", username: "t401", department: "中年級導師", role: "invigilator", assignedClassId: "401", assignedClassName: "四年一班" },
-    { id: "tch-402", name: "吳惠美", username: "t402", department: "中年級導師", role: "invigilator", assignedClassId: "402", assignedClassName: "四年二班" },
-    { id: "tch-501", name: "郭俊傑", username: "t501", department: "高年級導師", role: "author", assignedClassId: "501", assignedClassName: "五年一班", examAuthorAssignments: [{ subject: "數學", grade: 5 }] },
-    { id: "tch-502", name: "周佩蓉", username: "t502", department: "高年級導師", role: "invigilator", assignedClassId: "502", assignedClassName: "五年二班" },
-    { id: "tch-601", name: "劉哲銘", username: "t601", department: "高年級導師", role: "invigilator", assignedClassId: "601", assignedClassName: "六年一班" },
-    { id: "tch-602", name: "楊麗芳", username: "t602", department: "高年級導師", role: "invigilator", assignedClassId: "602", assignedClassName: "六年二班" }
-  ],
-
-  // 國小一至六年級班級，每班對應一位老師
-  classrooms: [
-    {
-      classId: "101", grade: 1, className: "一年一班",
-      expectedCount: 25, presentCount: 24, absentCount: 1,
-      absentStudents: [{ seatNo: 7, name: "陳小安", reason: "病假（腸病毒隔離）" }],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      assignedTeacherId: "tch-101", assignedTeacherName: "王美玲",
-      invigilator: "王美玲",
-      periodInvigilatorNames: { "period-1": "王美玲", "period-2": "王美玲", "period-3": "王美玲" }
-    },
-    {
-      classId: "102", grade: 1, className: "一年二班",
-      expectedCount: 25, presentCount: 25, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      assignedTeacherId: "tch-102", assignedTeacherName: "林怡君",
-      invigilator: "林怡君",
-      periodInvigilatorNames: { "period-1": "林怡君", "period-2": "林怡君", "period-3": "林怡君" }
-    },
-    {
-      classId: "201", grade: 2, className: "二年一班",
-      expectedCount: 26, presentCount: 26, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
-      assignedTeacherId: "tch-201", assignedTeacherName: "陳建志",
-      invigilator: "陳建志",
-      periodInvigilatorNames: { "period-1": "陳建志", "period-2": "陳建志", "period-3": "陳建志" }
-    },
-    {
-      classId: "202", grade: 2, className: "二年二班",
-      expectedCount: 25, presentCount: 24, absentCount: 1,
-      absentStudents: [{ seatNo: 15, name: "黃小羽", reason: "事假" }],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-      assignedTeacherId: "tch-202", assignedTeacherName: "張淑芬",
-      invigilator: "張淑芬",
-      periodInvigilatorNames: { "period-1": "張淑芬", "period-2": "張淑芬", "period-3": "張淑芬" }
-    },
-    {
-      classId: "301", grade: 3, className: "三年一班",
-      expectedCount: 27, presentCount: 27, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-      assignedTeacherId: "tch-301", assignedTeacherName: "黃志偉",
-      invigilator: "黃志偉",
-      periodInvigilatorNames: { "period-1": "黃志偉", "period-2": "黃志偉", "period-3": "黃志偉", "period-4": "黃志偉" }
-    },
-    {
-      classId: "302", grade: 3, className: "三年二班",
-      expectedCount: 26, presentCount: 25, absentCount: 1,
-      absentStudents: [{ seatNo: 3, name: "林小宇", reason: "公假（自治市幹部）" }],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
-      assignedTeacherId: "tch-302", assignedTeacherName: "李雅筑",
-      invigilator: "李雅筑",
-      periodInvigilatorNames: { "period-1": "李雅筑", "period-2": "李雅筑", "period-3": "李雅筑", "period-4": "李雅筑" }
-    },
-    {
-      classId: "401", grade: 4, className: "四年一班",
-      expectedCount: 28, presentCount: 0, absentCount: 0,
-      absentStudents: [],
-      statusReported: false, lastUpdated: null,
-      assignedTeacherId: "tch-401", assignedTeacherName: "許家榮",
-      invigilator: "許家榮",
-      periodInvigilatorNames: { "period-1": "許家榮" }
-    },
-    {
-      classId: "402", grade: 4, className: "四年二班",
-      expectedCount: 27, presentCount: 27, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
-      assignedTeacherId: "tch-402", assignedTeacherName: "吳惠美",
-      invigilator: "吳惠美",
-      periodInvigilatorNames: { "period-1": "吳惠美" }
-    },
-    {
-      classId: "501", grade: 5, className: "五年一班",
-      expectedCount: 28, presentCount: 27, absentCount: 1,
-      absentStudents: [{ seatNo: 18, name: "趙小萱", reason: "病假" }],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 22).toISOString(),
-      assignedTeacherId: "tch-501", assignedTeacherName: "郭俊傑",
-      invigilator: "郭俊傑",
-      periodInvigilatorNames: { "period-1": "郭俊傑" }
-    },
-    {
-      classId: "502", grade: 5, className: "五年二班",
-      expectedCount: 28, presentCount: 28, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 16).toISOString(),
-      assignedTeacherId: "tch-502", assignedTeacherName: "周佩蓉",
-      invigilator: "周佩蓉",
-      periodInvigilatorNames: { "period-1": "周佩蓉" }
-    },
-    {
-      classId: "601", grade: 6, className: "六年一班",
-      expectedCount: 29, presentCount: 29, absentCount: 0,
-      absentStudents: [],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-      assignedTeacherId: "tch-601", assignedTeacherName: "劉哲銘",
-      invigilator: "劉哲銘",
-      periodInvigilatorNames: { "period-1": "劉哲銘" }
-    },
-    {
-      classId: "602", grade: 6, className: "六年二班",
-      expectedCount: 29, presentCount: 28, absentCount: 1,
-      absentStudents: [{ seatNo: 11, name: "孫小睿", reason: "事假" }],
-      statusReported: true, lastUpdated: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      assignedTeacherId: "tch-602", assignedTeacherName: "楊麗芳",
-      invigilator: "楊麗芳",
-      periodInvigilatorNames: { "period-1": "楊麗芳" }
-    }
-  ],
-
+  teachers: changanData.teachers,
+  classrooms: changanData.classrooms,
   announcements: [
     {
       id: "anno-1",
@@ -202,30 +166,12 @@ window.ELEMENTARY_TEMPLATE_DATA = {
       readByClassIds: ["301", "302"]
     }
   ],
-
-  issues: [
-    {
-      id: "issue-1",
-      classId: "101",
-      className: "一年一班",
-      periodId: "period-1",
-      periodLabel: "第1節 08:40-09:20 國語",
-      type: "student",
-      content: "7號陳小安同學因發燒，家長已帶回就醫，已完成請假登記。",
-      status: "resolved",
-      isUrgent: false,
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      reply: "健康中心已完成通報，成績評量後續將依校內評量辦法辦理補考。",
-      repliedBy: "教務主任",
-      repliedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString()
-    }
-  ],
-
+  issues: [],
   corrections: [],
   auditLogs: [
-    { id: "log-1", action: "系統初始化", operator: "系統", details: "載入國小定期成績評量預設設定", timestamp: new Date().toISOString() }
+    { id: "log-1", action: "系統初始化", operator: "系統", details: "載入臺中市西屯區長安國小32班定期成績評量名冊", timestamp: new Date().toISOString() }
   ]
 };
 
-// 按照使用者要求：預設為全新空白資料 (清空所有資料)
+// 預設為全新空白資料 (使用者要求清空所有資料)
 window.INITIAL_EXAM_DATA = window.EMPTY_EXAM_DATA;
