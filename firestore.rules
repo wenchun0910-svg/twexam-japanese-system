@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 段考考務即時系統主文件與集合規則
+    match /exam_systems/{document=**} {
+      // 允許考場黑板端、巡堂行政端與監考端即時讀寫考務狀態
+      allow read, write: if true;
+    }
+    
+    // 操作審計日誌
+    match /audit_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+    }
+  }
+}

@@ -1,0 +1,965 @@
+/* ========================================================
+   段考考務即時管理系統 - 日式美學樣式表 (和風・Wabi-Sabi)
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@500;600;700;900&display=swap');
+
+:root {
+  /* 日本伝統色 (Traditional Japanese Color Palette) */
+  --c-washi: #FAF7F2;          /* 和紙底色 */
+  --c-washi-sub: #F2EDE4;      /* 練色 / 淺米紙 */
+  --c-washi-card: #FFFFFF;     /* 胡粉白 */
+  --c-border: #E3DDD3;        /* 柴染 / 墨線淡框 */
+  --c-border-sub: #EFEAE2;    /* 極細線條 */
+  
+  --c-ink: #22252A;           /* 墨色 (主要字體) */
+  --c-ink-sub: #58616B;       /* 薄墨 (次要字體) */
+  --c-ink-light: #8E98A4;     /* 灰青 (弱化標籤) */
+  
+  --c-ai: #243B4A;            /* 濃藍 / 藍鼠 (品牌主色) */
+  --c-ai-light: #345266;
+  --c-ai-bg: #EBF2F6;
+  
+  --c-matcha: #3C6E47;        /* 抹茶 / 若竹 (正常・全到・已完成) */
+  --c-matcha-light: #528E60;
+  --c-matcha-bg: #EDF5EF;
+  
+  --c-hiiro: #B93838;         /* 緋色 / 茜色 (缺席・緊急・更正) */
+  --c-hiiro-bg: #FAEEEE;
+  
+  --c-kohaku: #B87828;        /* 琥珀 / 山吹 (處理中・待辦) */
+  --c-kohaku-bg: #FBF4EA;
+  
+  --c-shuin: #C0362C;         /* 朱印 (和風角印・朱墨標章) */
+  
+  /* 電子黑板 (和風深紺黒板) */
+  --c-bb-bg: #141C24;
+  --c-bb-panel: #1D2834;
+  --c-bb-border: #2C3D4E;
+  --c-bb-chalk-white: #F4F7FA;
+  --c-bb-chalk-gold: #E5C378;
+  --c-bb-chalk-green: #7FD999;
+  --c-bb-chalk-red: #F07878;
+
+  --shadow-subtle: 0 2px 8px rgba(36, 43, 50, 0.04);
+  --shadow-card: 0 4px 16px rgba(36, 43, 50, 0.06);
+  --shadow-float: 0 12px 36px rgba(36, 43, 50, 0.12);
+  
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+  
+  --font-serif: 'Noto Serif TC', serif;
+  --font-sans: 'Noto Sans TC', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--c-washi);
+  color: var(--c-ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* 和紙質感微細紋理 */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: radial-gradient(rgba(140, 130, 115, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ========================================================
+   和風字體與標題元素
+   ======================================================== */
+h1, h2, h3, .jp-serif {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* 和風朱印章 (Hanko Stamp Badge) */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  border-radius: var(--radius-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stamp-shuin {
+  color: var(--c-shuin);
+  border: 1.5px solid var(--c-shuin);
+  background-color: rgba(192, 54, 44, 0.04);
+  box-shadow: 0 0 0 1px rgba(192, 54, 44, 0.15) inset;
+  transform: rotate(-1.5deg);
+}
+
+.stamp-matcha {
+  color: var(--c-matcha);
+  border: 1.5px solid var(--c-matcha);
+  background-color: rgba(60, 110, 71, 0.05);
+  box-shadow: 0 0 0 1px rgba(60, 110, 71, 0.15) inset;
+}
+
+.stamp-ai {
+  color: var(--c-ai);
+  border: 1.5px solid var(--c-ai);
+  background-color: rgba(36, 59, 74, 0.05);
+}
+
+.stamp-kohaku {
+  color: var(--c-kohaku);
+  border: 1.5px solid var(--c-kohaku);
+  background-color: rgba(184, 120, 40, 0.05);
+}
+
+/* 和風小標記 (Ruby / 考務箋注) */
+.jp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: var(--c-washi-sub);
+  color: var(--c-ink-sub);
+  border: 1px solid var(--c-border);
+}
+
+/* ========================================================
+   頂部導覽列 (和風屋簷・Header)
+   ======================================================== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: rgba(250, 247, 242, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: var(--shadow-subtle);
+}
+
+.header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-emblem {
+  width: 38px;
+  height: 38px;
+  background: var(--c-ai);
+  color: #FFF;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-weight: 900;
+  font-size: 1.25rem;
+  box-shadow: 0 2px 6px rgba(36, 59, 74, 0.25);
+}
+
+.brand-info h1 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--c-ink);
+  line-height: 1.2;
+}
+
+.brand-info p {
+  font-size: 0.72rem;
+  color: var(--c-ink-sub);
+  letter-spacing: 0.05em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-ink-sub);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-btn:hover {
+  background: var(--c-washi-sub);
+  color: var(--c-ink);
+  border-color: var(--c-border);
+}
+
+.nav-btn.active {
+  background: var(--c-ai);
+  color: #FFF;
+  border-color: var(--c-ai);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 連線狀態指示燈 */
+.sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--c-washi-sub);
+  border: 1px solid var(--c-border);
+  color: var(--c-ink-sub);
+  cursor: pointer;
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--c-matcha);
+  box-shadow: 0 0 6px rgba(60, 110, 71, 0.5);
+  animation: pulse 2.5s infinite;
+}
+
+.sync-dot.offline {
+  background-color: var(--c-kohaku);
+  box-shadow: 0 0 6px rgba(184, 120, 40, 0.5);
+}
+
+.sync-dot.firebase {
+  background-color: #F5820D;
+  box-shadow: 0 0 6px rgba(245, 130, 13, 0.6);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+/* ========================================================
+   主要內容容器與版面
+   ======================================================== */
+.main-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+/* 和風卡片容器 */
+.jp-card {
+  background: var(--c-washi-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jp-card:hover {
+  box-shadow: var(--shadow-float);
+}
+
+.jp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--c-border-sub);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.jp-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+/* ========================================================
+   按鈕與控制項 (和風按鈕)
+   ======================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.btn-primary {
+  background: var(--c-ai);
+  color: #FFF;
+  border-color: var(--c-ai);
+}
+
+.btn-primary:hover {
+  background: var(--c-ai-hover);
+}
+
+.btn-secondary {
+  background: var(--c-washi-sub);
+  color: var(--c-ink);
+  border-color: var(--c-border);
+}
+
+.btn-secondary:hover {
+  background: #E8E2D6;
+  border-color: #D6CEBE;
+}
+
+.btn-danger {
+  background: var(--c-hiiro);
+  color: #FFF;
+  border-color: var(--c-hiiro);
+}
+
+.btn-danger:hover {
+  background: #9E2B2B;
+}
+
+.btn-matcha {
+  background: var(--c-matcha);
+  color: #FFF;
+  border-color: var(--c-matcha);
+}
+
+.btn-matcha:hover {
+  background: #2D5436;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
+.btn-lg {
+  padding: 12px 24px;
+  font-size: 1rem;
+}
+
+/* 表單控制項 */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-ink-sub);
+  margin-bottom: 6px;
+}
+
+.form-control, .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: var(--c-ink);
+  background: #FFF;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--c-ai);
+  box-shadow: 0 0 0 2px rgba(36, 59, 74, 0.15);
+}
+
+/* ========================================================
+   教務管理中心 - 考場矩陣看板 (Matrix Grid)
+   ======================================================== */
+.matrix-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: var(--c-washi-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-box::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4px;
+  background: var(--c-ai);
+}
+
+.stat-box.matcha::before { background: var(--c-matcha); }
+.stat-box.hiiro::before { background: var(--c-hiiro); }
+.stat-box.kohaku::before { background: var(--c-kohaku); }
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--c-ink-sub);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--c-ink);
+  margin: 4px 0;
+}
+
+.stat-desc {
+  font-size: 0.72rem;
+  color: var(--c-ink-light);
+}
+
+/* 篩選與節次切換列 */
+.toolbar-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: var(--c-washi-sub);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+
+.toolbar-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  background: #FFF;
+  color: var(--c-ink-sub);
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  border-color: var(--c-ai);
+  color: var(--c-ink);
+}
+
+.chip.active {
+  background: var(--c-ai);
+  color: #FFF;
+  border-color: var(--c-ai);
+}
+
+/* 考場教室卡片網格 */
+.classroom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.class-card {
+  background: #FFF;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-subtle);
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.class-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+  border-color: var(--c-ai);
+}
+
+.class-card.all-present {
+  border-left: 5px solid var(--c-matcha);
+}
+
+.class-card.has-absent {
+  border-left: 5px solid var(--c-hiiro);
+}
+
+.class-card.waiting {
+  border-left: 5px solid var(--c-kohaku);
+}
+
+.class-card.has-incident {
+  background: #FFFDF9;
+  box-shadow: 0 0 0 1px var(--c-hiiro) inset;
+}
+
+.class-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.class-card-id {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--c-ink);
+}
+
+.class-card-teacher {
+  font-size: 0.8rem;
+  color: var(--c-ink-sub);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.attendance-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--c-washi);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border-sub);
+  margin-bottom: 10px;
+}
+
+.att-pill {
+  flex: 1;
+  text-align: center;
+}
+
+.att-pill-label {
+  font-size: 0.7rem;
+  color: var(--c-ink-light);
+  display: block;
+}
+
+.att-pill-num {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.att-pill-num.present { color: var(--c-matcha); }
+.att-pill-num.absent { color: var(--c-hiiro); }
+.att-pill-num.total { color: var(--c-ink); }
+
+.absent-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.absent-student-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: var(--c-hiiro-bg);
+  color: var(--c-hiiro);
+  border: 1px solid rgba(185, 56, 56, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ========================================================
+   教室電子黑板 (和風深紺黒板 - 專屬高對比投影模式)
+   ======================================================== */
+.blackboard-view {
+  background-color: var(--c-bb-bg);
+  color: var(--c-bb-chalk-white);
+  min-height: 100vh;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--c-bb-border);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.bb-title-group h1 {
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  letter-spacing: 0.05em;
+  color: var(--c-bb-chalk-white);
+}
+
+.bb-title-group p {
+  color: var(--c-bb-chalk-gold);
+  font-size: 1.1rem;
+  margin-top: 4px;
+}
+
+.bb-clock {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.bb-clock-time {
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--c-bb-chalk-white);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+.bb-clock-date {
+  font-size: 1rem;
+  color: var(--c-bb-chalk-gold);
+  margin-top: 6px;
+}
+
+/* 黑板公告輪播跑馬區 */
+.bb-announcement-banner {
+  background: linear-gradient(135deg, rgba(185, 56, 56, 0.25), rgba(185, 56, 56, 0.15));
+  border: 2px solid var(--c-bb-chalk-red);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: 0 0 20px rgba(240, 120, 120, 0.15);
+  animation: bannerGlow 3s infinite alternate;
+}
+
+@keyframes bannerGlow {
+  0% { box-shadow: 0 0 10px rgba(240, 120, 120, 0.15); }
+  100% { box-shadow: 0 0 24px rgba(240, 120, 120, 0.35); }
+}
+
+.bb-announcement-badge {
+  background: var(--c-bb-chalk-red);
+  color: #FFF;
+  font-family: var(--font-serif);
+  font-weight: 900;
+  font-size: 0.9rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.bb-announcement-content h3 {
+  font-size: 1.35rem;
+  color: var(--c-bb-chalk-gold);
+  margin-bottom: 6px;
+}
+
+.bb-announcement-content p {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: #FFF;
+}
+
+/* 黑板三欄主要佈局 */
+.bb-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 24px;
+  flex: 1;
+}
+
+.bb-panel {
+  background: var(--c-bb-panel);
+  border: 1px solid var(--c-bb-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bb-panel-title {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  color: var(--c-bb-chalk-gold);
+  border-bottom: 1px solid var(--c-bb-border);
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 考程進度大字卡 */
+.bb-subject-card {
+  text-align: center;
+  padding: 28px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+}
+
+.bb-subject-name {
+  font-family: var(--font-serif);
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: var(--c-bb-chalk-white);
+  letter-spacing: 0.08em;
+}
+
+.bb-countdown {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--c-bb-chalk-gold);
+  margin-top: 10px;
+}
+
+/* 黑板出席卡片 */
+.bb-att-card {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.bb-att-item {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-bb-border);
+}
+
+.bb-att-item .val {
+  font-family: var(--font-mono);
+  font-size: 2.5rem;
+  font-weight: 800;
+}
+
+.bb-att-item.present .val { color: var(--c-bb-chalk-green); }
+.bb-att-item.absent .val { color: var(--c-bb-chalk-red); }
+
+/* ========================================================
+   教務處全校看板 (Command Board)
+   ======================================================== */
+.academic-board-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.incident-alert-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  background: var(--c-hiiro-bg);
+  border: 1.5px solid var(--c-hiiro);
+}
+
+/* ========================================================
+   彈出視窗 (和風 Modal & Dialog)
+   ======================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(22, 28, 36, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-dialog {
+  background: var(--c-washi-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--c-washi);
+}
+
+.modal-header h3 {
+  font-size: 1.15rem;
+  color: var(--c-ink);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--c-ink-sub);
+}
+
+.modal-body {
+  padding: 20px;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-washi);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========================================================
+   表格樣式 (和風精緻冊列)
+   ======================================================== */
+.jp-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.88rem;
+}
+
+.jp-table th {
+  background: var(--c-washi-sub);
+  color: var(--c-ink-sub);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--c-border);
+  letter-spacing: 0.05em;
+}
+
+.jp-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-border-sub);
+  color: var(--c-ink);
+  background: #FFF;
+}
+
+.jp-table tr:hover td {
+  background: #FAF8F4;
+}
+
+/* ========================================================
+   響應式適配
+   ======================================================== */
+@media (max-width: 900px) {
+  .header-inner {
+    padding: 0 12px;
+  }
+  .bb-grid {
+    grid-template-columns: 1fr;
+  }
+  .bb-clock-time {
+    font-size: 2.4rem;
+  }
+  .bb-subject-name {
+    font-size: 2.2rem;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #FFF;
+    color: #000;
+  }
+}
