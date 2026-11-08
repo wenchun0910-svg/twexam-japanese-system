@@ -1345,6 +1345,22 @@ class ExamApp {
     }
   }
 
+  formatGradeTarget(code) {
+    switch (String(code)) {
+      case 'all': return '全校各年級';
+      case '1': return '僅一年級';
+      case '2': return '僅二年級';
+      case '3': return '僅三年級';
+      case '4': return '僅四年級';
+      case '5': return '僅五年級';
+      case '6': return '僅六年級';
+      case 'low': return '低年級 (1~2年級)';
+      case 'mid': return '中年級 (3~4年級)';
+      case 'high': return '高年級 (5~6年級)';
+      default: return code ? `${code}年級` : '全校各年級';
+    }
+  }
+
   // ----------------------------------------------------
   // 1.4 公告與試題勘誤 (Broadcast Tab)
   // ----------------------------------------------------
@@ -1353,39 +1369,52 @@ class ExamApp {
     return `
       <div class="jp-card">
         <div class="jp-card-header">
-          <h2 class="jp-card-title"><span>📢</span> 國小定期評量試題勘誤與考務公告</h2>
+          <div>
+            <h2 class="jp-card-title"><span>📢</span> 國小定期評量試題勘誤與考務廣播管理</h2>
+            <p style="font-size:0.8rem; color:var(--c-ink-sub); margin-top:4px;">
+              在此發布試題勘誤與考務廣播，<strong>指定推播年級（幾年級就只會推播到幾年級）</strong>，並可附帶<strong>試題圖片連結或上傳圖檔</strong>。
+            </p>
+          </div>
           <button class="btn btn-primary btn-sm" onclick="window.app.openQuickAnnouncementModal()">
             <span>➕</span> 發布勘誤公告
           </button>
         </div>
 
-        <p style="font-size:0.85rem; color:var(--c-ink-sub); margin-bottom:16px;">
-          在此發布之試題注音/選項勘誤、答題提醒與時間延長，將即時推播至全校各教室電子黑板大螢幕高對比顯示，並發出提示音。
-        </p>
-
         <table class="jp-table">
           <thead>
             <tr>
-              <th style="width:110px;">類型</th>
-              <th style="width:100px;">考科 / 對象</th>
-              <th>公告標題與內容</th>
-              <th style="width:140px;">發布時間</th>
-              <th style="width:120px;">黑板確認回執</th>
-              <th style="width:90px;">操作</th>
+              <th style="width:100px;">類型</th>
+              <th style="width:130px;">推播年級</th>
+              <th style="width:90px;">科目</th>
+              <th>公告標題、內容與試題圖片</th>
+              <th style="width:130px;">發布時間</th>
+              <th style="width:110px;">黑板回執</th>
+              <th style="width:80px;">操作</th>
             </tr>
           </thead>
           <tbody>
-            ${list.length === 0 ? '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--c-ink-light);">目前無公告</td></tr>' : list.map(a => `
+            ${list.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--c-ink-light);">目前無公告</td></tr>' : list.map(a => `
               <tr>
                 <td>
                   <span class="stamp ${a.priority === 'critical' ? 'stamp-shuin' : 'stamp-kohaku'}">
                     ${a.type === 'correction' ? '試題勘誤' : (a.type === 'extension' ? '考程順延' : '一般公告')}
                   </span>
                 </td>
+                <td>
+                  <span class="stamp stamp-ai">${this.formatGradeTarget(a.targetGrade || a.targetAudience)}</span>
+                </td>
                 <td><strong>${this.escapeHtml(a.subject || '全校')}</strong></td>
                 <td>
                   <div style="font-weight:700; color:var(--c-ink); margin-bottom:4px;">${this.escapeHtml(a.title)}</div>
-                  <div style="font-size:0.82rem; color:var(--c-ink-sub); line-height:1.4;">${this.escapeHtml(a.content)}</div>
+                  <div style="font-size:0.82rem; color:var(--c-ink-sub); line-height:1.4; white-space:pre-wrap;">${this.escapeHtml(a.content)}</div>
+                  ${a.imageUrl ? `
+                    <div style="margin-top:6px; display:inline-flex; align-items:center; gap:8px;">
+                      <img src="${this.escapeHtml(a.imageUrl)}" alt="縮圖" style="height:36px; border-radius:3px; border:1px solid var(--c-border); cursor:pointer;" onclick="window.app.openLightbox('${this.escapeHtml(a.imageUrl)}')">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.openLightbox('${this.escapeHtml(a.imageUrl)}')">
+                        <span>🖼️</span> 查看勘誤題目大圖
+                      </button>
+                    </div>
+                  ` : ''}
                 </td>
                 <td style="font-family:var(--font-mono); font-size:0.8rem;">
                   ${new Date(a.publishedAt).toLocaleTimeString()}
@@ -1815,8 +1844,20 @@ class ExamApp {
     const cls = classrooms.find(c => c.classId === this.selectedClassId) || classrooms[0] || { className: '尚未建立班級', expectedCount: 0 };
     const periods = this.state.config.periods || [];
     const currentPeriod = periods[0] || { subject: '國語', startTime: '08:40', endTime: '09:20' };
-    const announcements = this.state.announcements || [];
-    const currentAnno = announcements[this.blackboardCarouselIndex % Math.max(1, announcements.length)];
+
+    // 對象幾年級就只會推播到幾年級
+    const classGrade = Number(cls.grade) || 1;
+    const filteredAnnouncements = (this.state.announcements || []).filter(a => {
+      const target = String(a.targetGrade || a.targetAudience || 'all');
+      if (target === 'all') return true;
+      if (target === String(classGrade)) return true;
+      if (target === 'low' && (classGrade === 1 || classGrade === 2)) return true;
+      if (target === 'mid' && (classGrade === 3 || classGrade === 4)) return true;
+      if (target === 'high' && (classGrade === 5 || classGrade === 6)) return true;
+      return false;
+    });
+
+    const currentAnno = filteredAnnouncements.length > 0 ? filteredAnnouncements[this.blackboardCarouselIndex % filteredAnnouncements.length] : null;
 
     return `
       <div class="blackboard-view">
@@ -1844,15 +1885,24 @@ class ExamApp {
           </div>
         </header>
 
-        <!-- 試題勘誤輪播跑馬燈 -->
-        ${announcements.length > 0 && currentAnno ? `
+        <!-- 試題勘誤輪播跑馬燈 (對象幾年級就只會推播到幾年級，支援圖片連結/放大檢視) -->
+        ${filteredAnnouncements.length > 0 && currentAnno ? `
           <div class="bb-announcement-banner">
             <div class="bb-announcement-badge">
-              ${currentAnno.type === 'correction' ? '試題勘誤' : '考務公告'} (${(this.blackboardCarouselIndex % announcements.length) + 1}/${announcements.length})
+              ${currentAnno.type === 'correction' ? '試題勘誤' : '考務公告'} (${(this.blackboardCarouselIndex % filteredAnnouncements.length) + 1}/${filteredAnnouncements.length})
+              ${currentAnno.targetGrade && currentAnno.targetGrade !== 'all' ? `<br><span style="font-size:0.75rem; color:#FFE4E4;">【${this.formatGradeTarget(currentAnno.targetGrade)}】</span>` : ''}
             </div>
             <div class="bb-announcement-content" style="flex:1;">
               <h3>【${this.escapeHtml(currentAnno.subject)}】${this.escapeHtml(currentAnno.title)}</h3>
-              <p>${this.escapeHtml(currentAnno.content)}</p>
+              <p style="white-space:pre-wrap;">${this.escapeHtml(currentAnno.content)}</p>
+              ${currentAnno.imageUrl ? `
+                <div style="margin-top:10px; display:inline-block; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; border:1px solid var(--c-bb-chalk-gold);">
+                  <img src="${this.escapeHtml(currentAnno.imageUrl)}" alt="勘誤題目圖片" style="max-height:220px; max-width:100%; border-radius:4px; cursor:zoom-in; background:#FFF;" onclick="window.app.openLightbox('${this.escapeHtml(currentAnno.imageUrl)}')">
+                  <span style="font-size:0.78rem; color:var(--c-bb-chalk-gold); display:block; margin-top:4px; cursor:pointer;" onclick="window.app.openLightbox('${this.escapeHtml(currentAnno.imageUrl)}')">
+                    🔍 點擊此處可大螢幕全版放大檢視試題圖樣
+                  </span>
+                </div>
+              ` : ''}
             </div>
             <button class="btn btn-secondary btn-sm no-print" onclick="window.app.confirmReadAnnouncement('${currentAnno.id}', '${cls.classId}')">
               確認收到回執
@@ -1860,7 +1910,7 @@ class ExamApp {
           </div>
         ` : `
           <div style="padding:10px 16px; background:rgba(255,255,255,0.05); border-radius:var(--radius-sm); margin-bottom:20px; font-size:0.9rem; color:var(--c-bb-chalk-gold);">
-            📢 目前無緊急試題更正，小朋友請仔細閱讀題目、細心作答。
+            📢 ${cls.className ? cls.className : ''} 目前無本年級緊急試題更正，小朋友請仔細閱讀題目、細心作答。
           </div>
         `}
 
@@ -2513,38 +2563,160 @@ class ExamApp {
   }
 
   openQuickAnnouncementModal() {
+    this.annoTempImage = null;
     const modalHtml = `
       <div class="modal-overlay" id="modal-anno">
-        <div class="modal-dialog">
+        <div class="modal-dialog" style="max-width:620px;">
           <div class="modal-header">
             <h3>📢 發布即時試題勘誤 / 考務廣播</h3>
             <button class="modal-close-btn" onclick="window.app.closeModal('modal-anno')">&times;</button>
           </div>
           <div class="modal-body">
+            <div style="background:var(--c-bg-sub); padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:14px; font-size:0.83rem; color:var(--c-ink-sub); border-left:3px solid var(--c-shuin);">
+              💡 <strong>推播原則</strong>：指定幾年級就<strong>僅會推播至該年級教室黑板</strong>，避免不同年級學童受無關考題干擾。支援輸入試題圖片網址或直接選擇圖檔，黑板可直接放大投影。
+            </div>
+
             <div class="form-group">
               <label class="form-label">公告類型</label>
               <select id="new-anno-type" class="form-select">
-                <option value="correction">試題勘誤 (紅框高對比黑板廣播)</option>
+                <option value="correction" selected>試題勘誤 (紅框高對比黑板廣播)</option>
                 <option value="extension">評量時間順延</option>
                 <option value="general">一般考務提醒</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">考科 / 對象</label>
-              <input type="text" id="new-anno-subject" class="form-control" placeholder="例如：國語、數學、生活、全校" value="國語">
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label">🎯 推播對象年級 <span style="color:var(--c-shuin); font-weight:bold;">*</span></label>
+                <select id="new-anno-target" class="form-select">
+                  <option value="all">全校各年級 (1~6年級全推播)</option>
+                  <option value="1">僅一年級</option>
+                  <option value="2">僅二年級</option>
+                  <option value="3" selected>僅三年級</option>
+                  <option value="4">僅四年級</option>
+                  <option value="5">僅五年級</option>
+                  <option value="6">僅六年級</option>
+                  <option value="low">低年級 (1~2年級)</option>
+                  <option value="mid">中年級 (3~4年級)</option>
+                  <option value="high">高年級 (5~6年級)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">評量考科 / 項目</label>
+                <input type="text" id="new-anno-subject" class="form-control" placeholder="例如：國語、數學、生活、自然" value="國語">
+              </div>
             </div>
+
             <div class="form-group">
               <label class="form-label">公告標題</label>
               <input type="text" id="new-anno-title" class="form-control" placeholder="例如：三年級國語科第二大題注音勘誤">
             </div>
+
             <div class="form-group">
               <label class="form-label">詳細勘誤內容說明</label>
-              <textarea id="new-anno-content" class="form-control" rows="4" placeholder="請填寫具體勘誤文字，將即時推播至各教室黑板..."></textarea>
+              <textarea id="new-anno-content" class="form-control" rows="3" placeholder="請填寫具體勘誤文字，將即時推播至各教室黑板..."></textarea>
+            </div>
+
+            <div class="form-group" style="background:#FAF8F5; padding:12px; border:1px dashed var(--c-border); border-radius:var(--radius-sm);">
+              <label class="form-label" style="display:flex; align-items:center; justify-content:space-between;">
+                <span>🖼️ 勘誤試題圖片連結 / 上傳圖檔 (選填)</span>
+                <span style="font-size:0.75rem; color:var(--c-ink-light); font-weight:normal;">黑板大螢幕支援點擊放大檢視</span>
+              </label>
+
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <input type="url" id="new-anno-img-url" class="form-control" placeholder="貼上試題圖片網址 (https://... 支援各圖床或雲端連結)" oninput="window.app.previewAnnoImageUrl(this.value)">
+
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:0.8rem; color:var(--c-ink-sub); white-space:nowrap;">或從本機選圖：</span>
+                  <input type="file" id="new-anno-img-file" accept="image/*" style="font-size:0.8rem;" onchange="window.app.handleAnnoFileSelect(event)">
+                </div>
+
+                <div id="new-anno-img-preview-box" style="display:none; margin-top:6px; padding:8px; background:#FFF; border:1px solid var(--c-border); border-radius:4px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--c-ink);">圖片即時預覽：</span>
+                    <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="window.app.clearAnnoImage()">清除圖片</button>
+                  </div>
+                  <img id="new-anno-img-preview" src="" alt="預覽" style="max-height:140px; max-width:100%; border-radius:3px; border:1px solid #EEE; display:block;">
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary btn-sm" onclick="window.app.closeModal('modal-anno')">取消</button>
-            <button class="btn btn-danger btn-sm" onclick="window.app.submitNewAnnouncement()">立即推播至各考場黑板</button>
+            <button class="btn btn-danger btn-sm" onclick="window.app.submitNewAnnouncement()">立即發布並推播至指定黑板</button>
+          </div>
+        </div>
+      </div>
+    `;
+    this.showModalContainer(modalHtml);
+  }
+
+  handleAnnoFileSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('提醒：圖片檔案較大 (超過 2MB)，若需在 Firebase 快速同步，建議壓縮或使用外部圖片網址。');
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      this.annoTempImage = dataUrl;
+      const previewBox = document.getElementById('new-anno-img-preview-box');
+      const previewImg = document.getElementById('new-anno-img-preview');
+      const urlInput = document.getElementById('new-anno-img-url');
+      if (previewBox && previewImg) {
+        previewImg.src = dataUrl;
+        previewBox.style.display = 'block';
+      }
+      if (urlInput) {
+        urlInput.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  previewAnnoImageUrl(url) {
+    const previewBox = document.getElementById('new-anno-img-preview-box');
+    const previewImg = document.getElementById('new-anno-img-preview');
+    if (!previewBox || !previewImg) return;
+    const trimmed = (url || '').trim();
+    if (trimmed) {
+      this.annoTempImage = trimmed;
+      previewImg.src = trimmed;
+      previewBox.style.display = 'block';
+    } else if (!this.annoTempImage || (typeof this.annoTempImage === 'string' && this.annoTempImage.startsWith('http'))) {
+      this.annoTempImage = null;
+      previewBox.style.display = 'none';
+    }
+  }
+
+  clearAnnoImage() {
+    this.annoTempImage = null;
+    const previewBox = document.getElementById('new-anno-img-preview-box');
+    const previewImg = document.getElementById('new-anno-img-preview');
+    const urlInput = document.getElementById('new-anno-img-url');
+    const fileInput = document.getElementById('new-anno-img-file');
+    if (previewBox) previewBox.style.display = 'none';
+    if (previewImg) previewImg.src = '';
+    if (urlInput) urlInput.value = '';
+    if (fileInput) fileInput.value = '';
+  }
+
+  openLightbox(imageUrl) {
+    if (!imageUrl) return;
+    const modalHtml = `
+      <div class="modal-overlay" id="modal-lightbox" onclick="if(event.target === this) window.app.closeModal('modal-lightbox')">
+        <div class="modal-dialog" style="max-width:92vw; width:880px; background:#141C24; color:#FFF; border:2px solid var(--c-bb-chalk-gold);">
+          <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.15);">
+            <h3 style="color:var(--c-bb-chalk-gold); font-family:var(--font-mincho);">🔍 試題勘誤大螢幕圖樣放大檢視</h3>
+            <button class="modal-close-btn" style="color:#FFF;" onclick="window.app.closeModal('modal-lightbox')">&times;</button>
+          </div>
+          <div class="modal-body" style="text-align:center; padding:16px; overflow:auto; max-height:80vh;">
+            <img src="${this.escapeHtml(imageUrl)}" alt="勘誤題目圖片" style="max-width:100%; max-height:70vh; border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.5); background:#FFF;">
+            <div style="margin-top:12px; font-size:0.85rem; color:#DDD;">
+              點擊右上角「✕」或背景任一處即可返回黑板畫面
+            </div>
           </div>
         </div>
       </div>
@@ -2554,16 +2726,22 @@ class ExamApp {
 
   submitNewAnnouncement() {
     const type = document.getElementById('new-anno-type').value;
+    const targetGrade = document.getElementById('new-anno-target').value;
     const subject = document.getElementById('new-anno-subject').value.trim() || '全校';
     const title = document.getElementById('new-anno-title').value.trim();
     const content = document.getElementById('new-anno-content').value.trim();
-    if (!title || !content) return alert('請填寫標題與內容！');
+    const urlInput = document.getElementById('new-anno-img-url');
+    const imageUrl = this.annoTempImage || (urlInput ? urlInput.value.trim() : '') || null;
+
+    if (!title || !content) return alert('請填寫標題與詳細勘誤內容說明！');
 
     const newAnno = {
       id: 'anno-' + Date.now(),
       type,
       subject,
-      targetAudience: 'all',
+      targetGrade: targetGrade,
+      targetAudience: targetGrade,
+      imageUrl: imageUrl,
       title,
       content,
       publishedBy: '教務處 試務組',
@@ -2572,14 +2750,17 @@ class ExamApp {
       readByClassIds: []
     };
 
+    this.annoTempImage = null;
+
     this.updateState(state => {
       if (!state.announcements) state.announcements = [];
       state.announcements.unshift(newAnno);
-    }, '發布試題勘誤', `【${subject}】${title}`);
+    }, '發布試題勘誤', `【${this.formatGradeTarget(targetGrade)} / ${subject}】${title}`);
 
     window.soundFX.playChime();
     this.closeModal('modal-anno');
-    alert('勘誤公告已成功發布並推播至全校教室黑板！');
+    const targetDesc = this.formatGradeTarget(targetGrade);
+    alert(`勘誤公告已成功發布！\n推播對象：${targetDesc}\n${imageUrl ? '（已附加勘誤試題圖片）' : ''}`);
   }
 
   deleteAnnouncement(id) {
