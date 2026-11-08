@@ -1244,9 +1244,6 @@ class ExamApp {
       </div>
     `;
   }
-      </div>
-    `;
-  }
 
   openAddTeacherModal() {
     const classrooms = this.state.classrooms || [];
