@@ -2493,7 +2493,7 @@ class ExamApp {
   // 彈出視窗與輔助模態框
   // ----------------------------------------------------
   openFirebaseConfigModal() {
-    const existing = window.firebaseService.config || {};
+    const existing = window.firebaseService.config || window.DEFAULT_FIREBASE_CONFIG || {};
     const modalHtml = `
       <div class="modal-overlay" id="modal-firebase">
         <div class="modal-dialog">
@@ -2502,9 +2502,9 @@ class ExamApp {
             <button class="modal-close-btn" onclick="window.app.closeModal('modal-firebase')">&times;</button>
           </div>
           <div class="modal-body">
-            <p style="font-size:0.82rem; color:var(--c-ink-sub); margin-bottom:14px;">
-              本系統使用 Google Cloud Firestore 作為全校多端（電子黑板、教師手機、教務處看板）即時資料庫。請至 Firebase Console 複製專案設定貼於下方：
-            </p>
+            <div style="background:var(--c-bg-sub); padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:14px; font-size:0.83rem; color:var(--c-ink-sub); border-left:3px solid var(--c-matsu);">
+              ✅ <strong>內建已連線</strong>：本系統已於程式內直接寫入 Google Cloud Firestore 資料庫設定（專案 ID：<code>examsystem-507ea</code>），全校各考場電子黑板、教師端與教務處開啟即時同步，無需手動輸入。若需切換至其他 Firebase 專案，可於下方修改：
+            </div>
 
             <div class="form-group">
               <label class="form-label">apiKey</label>
@@ -2528,8 +2528,8 @@ class ExamApp {
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary btn-sm" onclick="window.app.clearFirebaseConfig()">清除連線 (返回展示模式)</button>
-            <button class="btn btn-primary btn-sm" onclick="window.app.saveFirebaseConfig()">儲存並連線 Firebase</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.clearFirebaseConfig()">回復內建預設設定</button>
+            <button class="btn btn-primary btn-sm" onclick="window.app.saveFirebaseConfig()">儲存自訂設定並重新連線</button>
           </div>
         </div>
       </div>
@@ -2557,7 +2557,7 @@ class ExamApp {
 
   clearFirebaseConfig() {
     window.firebaseService.clearConfig();
-    alert('已清除 Firebase 設定，回復純本機展示與多頁籤通道模式。');
+    alert('已回復為系統內建預設的 Firebase 資料庫設定 (專案 ID: examsystem-507ea)！');
     this.closeModal('modal-firebase');
     this.render();
   }

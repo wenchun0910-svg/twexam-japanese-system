@@ -1,17 +1,30 @@
 // ========================================================
 // Firebase 資料庫管理與即時同步模組
+// 內建專案設定：examsystem-507ea
 // ========================================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDMhYJCiaND_Iqhe0YLknBsoznSk2JasVY",
+  authDomain: "examsystem-507ea.firebaseapp.com",
+  projectId: "examsystem-507ea",
+  storageBucket: "examsystem-507ea.firebasestorage.app",
+  messagingSenderId: "745111861914",
+  appId: "1:745111861914:web:c48518d8424fb8ea297d23"
+};
+
+// 掛載至全域常數以供頁面存取
+window.DEFAULT_FIREBASE_CONFIG = firebaseConfig;
 
 class FirebaseService {
   constructor() {
     this.app = null;
     this.db = null;
     this.isConnected = false;
-    this.config = null;
+    this.config = firebaseConfig;
     this.listeners = [];
     this.channel = null;
 
-    // 建立跨頁籤 BroadcastChannel 同步通道
+    // 建立跨頁籤 BroadcastChannel 同步通道 (本機離線與快速通道)
     if (window.BroadcastChannel) {
       this.channel = new BroadcastChannel('twexam_realtime_sync');
       this.channel.onmessage = (event) => {
@@ -22,19 +35,25 @@ class FirebaseService {
       };
     }
 
+    // 自動以內建 firebaseConfig 進行初始化與雲端連線
     this.loadSavedConfig();
   }
 
   loadSavedConfig() {
+    let activeConfig = firebaseConfig;
     try {
       const saved = localStorage.getItem('TW_EXAM_FIREBASE_CONFIG');
       if (saved) {
-        this.config = JSON.parse(saved);
-        this.initFirebase(this.config);
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.apiKey && parsed.projectId) {
+          activeConfig = parsed;
+        }
       }
     } catch (e) {
-      console.warn("載入 Firebase 設定失敗:", e);
+      console.warn("載入 Firebase 設定失敗，使用內建設定:", e);
     }
+    this.config = activeConfig;
+    this.initFirebase(activeConfig);
   }
 
   async initFirebase(cfg) {
@@ -98,6 +117,8 @@ class FirebaseService {
           const data = doc.data();
           console.log("[Firestore] 收到雲端即時同步資料");
           this.notifySubscribers(data, false);
+        } else {
+          console.log("[Firestore] 雲端尚無現有考務文件，等待首次狀態寫入");
         }
       }, (err) => {
         console.warn("[Firestore] 即時監聽中斷:", err);
@@ -162,10 +183,8 @@ class FirebaseService {
 
   clearConfig() {
     localStorage.removeItem('TW_EXAM_FIREBASE_CONFIG');
-    this.config = null;
-    this.isConnected = false;
-    this.db = null;
-    this.app = null;
+    this.config = firebaseConfig;
+    return this.initFirebase(firebaseConfig);
   }
 }
 
