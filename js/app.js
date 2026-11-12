@@ -92,7 +92,32 @@ class ExamApp {
     window.location.hash = hash;
   }
 
+  requireAuth(requiredRole = 'any') {
+    if (!this.currentUser) {
+      alert('⚠️ 權限管制：必須登入帳號與密碼才能修改資料！\n\n【教務管理員】帳號：test ／ 密碼：12345678\n【各班導師】請輸入教師姓名或班級代碼與密碼');
+      this.openLoginModal();
+      return false;
+    }
+
+    if (requiredRole === 'admin' && this.currentUser.role !== 'admin') {
+      alert(`⚠️ 權限不足：您目前是以「${this.currentUser.name} (導師)」身分登入。\n此項全校設定與管理功能僅限教務處管理員 (test) 操作！`);
+      return false;
+    }
+
+    return true;
+  }
+
   async updateState(updater, logAction = null, logDetails = null) {
+    const isAuthAction = ['管理員登入', '導師登入', '帳號登出'].includes(logAction);
+    const isBlackboardReceipt = logAction === '黑板確認公告';
+
+    if (!isAuthAction && !isBlackboardReceipt && !this.currentUser) {
+      console.warn('[權限攔截] 尚未登入帳號密碼，禁止修改考務資料');
+      alert('⚠️ 權限管制：必須登入帳號與密碼才能修改資料！');
+      this.openLoginModal();
+      return false;
+    }
+
     if (typeof updater === 'function') {
       updater(this.state);
     }
@@ -101,7 +126,7 @@ class ExamApp {
       const newLog = {
         id: 'log-' + Date.now(),
         action: logAction,
-        operator: this.currentUser ? `${this.currentUser.name} (${this.currentUser.role === 'admin' ? '教務管理' : '導師'})` : '教務處',
+        operator: this.currentUser ? `${this.currentUser.name} (${this.currentUser.role === 'admin' ? '教務管理' : '導師'})` : '訪客',
         details: logDetails || '',
         timestamp: new Date().toISOString()
       };
@@ -121,6 +146,10 @@ class ExamApp {
     username = (username || '').trim();
     password = (password || '').trim();
 
+    if (!username || !password) {
+      return { success: false, message: '請輸入帳號與密碼！' };
+    }
+
     // 支援測試管理員帳號：test / 12345678
     if (username.toLowerCase() === 'test' && password === '12345678') {
       this.currentUser = {
@@ -133,7 +162,6 @@ class ExamApp {
       sessionStorage.setItem('TW_EXAM_USER', JSON.stringify(this.currentUser));
       this.updateState(() => {}, '管理員登入', '教務處管理員 (test) 登入成功');
       window.soundFX.playChime();
-      this.navigate('admin');
       return { success: true };
     }
 
@@ -148,8 +176,8 @@ class ExamApp {
 
     if (teacher) {
       const isPwdMatch = (teacher.password && teacher.password === password) ||
-                         (password === '12345678') ||
-                         (password === teacher.username);
+                         (!teacher.password && password === '12345678') ||
+                         (password === '12345678');
       if (isPwdMatch) {
         this.currentUser = {
           id: teacher.id,
@@ -163,12 +191,11 @@ class ExamApp {
         sessionStorage.setItem('TW_EXAM_USER', JSON.stringify(this.currentUser));
         this.updateState(() => {}, '導師登入', `導師 ${teacher.name}（負責：${teacher.assignedClassName || '未指派'}）登入成功`);
         window.soundFX.playChime();
-        this.navigate('invigilator');
         return { success: true };
       }
     }
 
-    return { success: false, message: '帳號或密碼錯誤。管理員：test / 12345678，或使用導師姓名/班級與專屬密碼登入' };
+    return { success: false, message: '帳號或密碼錯誤！\n\n• 管理員帳號：test ／ 密碼：12345678\n• 導師：請輸入教師姓名或班級代碼與密碼' };
   }
 
   logout() {
@@ -176,7 +203,8 @@ class ExamApp {
     this.currentUser = null;
     sessionStorage.removeItem('TW_EXAM_USER');
     this.updateState(() => {}, '帳號登出', `${name} 已安全登出`);
-    this.navigate('admin');
+    alert('已安全登出系統。');
+    this.render();
   }
 
   // ----------------------------------------------------
@@ -315,6 +343,33 @@ class ExamApp {
 
     return `
       <div class="admin-view-container">
+        <!-- 訪客/權限提示橫幅 -->
+        ${!this.currentUser ? `
+          <div style="background:#FFF9E6; border:1px solid #FFE082; border-left:4px solid var(--c-kohaku); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.15rem;">🔒</span>
+              <span style="font-size:0.85rem; color:#795548;">
+                <strong>目前為訪客檢視模式</strong>：依考務安全規範，<strong>必須登入帳號與密碼才能修改資料</strong>（包含編輯班級、導師名冊、考程時間或發布試題勘誤）。
+              </span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="window.app.openLoginModal()">
+              <span>🔑</span> 登入管理員 (test / 12345678)
+            </button>
+          </div>
+        ` : (this.currentUser.role !== 'admin' ? `
+          <div style="background:#EBF5FB; border:1px solid #AED6F1; border-left:4px solid var(--c-ai); padding:10px 16px; border-radius:var(--radius-sm); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span>👨‍🏫</span>
+              <span style="font-size:0.85rem; color:#1B4F72;">
+                您目前以 <strong>${this.escapeHtml(this.currentUser.name)} 老師</strong>（負責：${this.escapeHtml(this.currentUser.assignedClassName || '未指派')}）身分登入。教務處管理設定僅限管理員 (test) 修改，班級點名填報請至 <a href="#invigilator" style="font-weight:700; text-decoration:underline;">導師工作台</a>。
+              </span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.openLoginModal()">
+              切換管理員登入
+            </button>
+          </div>
+        ` : '')}
+
         <!-- 次導覽頁籤列 -->
         <div class="toolbar-bar no-print" style="margin-bottom:20px;">
           <div class="toolbar-filters">
@@ -646,6 +701,7 @@ class ExamApp {
 
   // 新增班級彈窗
   openAddClassModal() {
+    if (!this.requireAuth('admin')) return;
     const teachers = this.state.teachers || [];
     const modalHtml = `
       <div class="modal-overlay" id="modal-add-class">
@@ -706,6 +762,7 @@ class ExamApp {
   }
 
   saveNewClass() {
+    if (!this.requireAuth('admin')) return;
     const grade = Number(document.getElementById('new-class-grade').value) || 1;
     const className = document.getElementById('new-class-name').value.trim();
     let classId = document.getElementById('new-class-id').value.trim();
@@ -777,6 +834,7 @@ class ExamApp {
 
   // 編輯班級彈窗
   openEditClassModal(classId) {
+    if (!this.requireAuth('admin')) return;
     const cls = (this.state.classrooms || []).find(c => c.classId === classId);
     if (!cls) return;
     const teachers = this.state.teachers || [];
@@ -831,6 +889,7 @@ class ExamApp {
   }
 
   saveEditedClass(classId) {
+    if (!this.requireAuth('admin')) return;
     const className = document.getElementById('edit-class-name').value.trim();
     const grade = Number(document.getElementById('edit-class-grade').value) || 1;
     const exp = Number(document.getElementById('edit-class-exp').value) || 25;
@@ -869,6 +928,7 @@ class ExamApp {
 
   // 刪除班級
   deleteClass(classId) {
+    if (!this.requireAuth('admin')) return;
     const cls = (this.state.classrooms || []).find(c => c.classId === classId);
     if (!cls) return;
     if (confirm(`確定要刪除【${cls.className}】嗎？此動作將連同該班點名紀錄一併移除。`)) {
@@ -886,6 +946,7 @@ class ExamApp {
 
   // 指派對應老師
   assignTeacherToClass(classId, teacherId) {
+    if (!this.requireAuth('admin')) return;
     const teacher = (this.state.teachers || []).find(t => t.id === teacherId);
     this.updateState(state => {
       const cls = state.classrooms.find(c => c.classId === classId);
@@ -907,6 +968,7 @@ class ExamApp {
 
   // 一鍵載入長安國小全校班級與導師名冊
   batchGenerateElementaryClasses() {
+    if (!this.requireAuth('admin')) return;
     if (confirm('確定要載入臺中市西屯區長安國小全校 32 班（一至六年級）與 32 位專屬導師名冊與密碼嗎？')) {
       const sample = JSON.parse(JSON.stringify(window.ELEMENTARY_TEMPLATE_DATA));
       this.updateState(state => {
@@ -920,6 +982,7 @@ class ExamApp {
 
   // 清空所有班級
   clearAllClasses() {
+    if (!this.requireAuth('admin')) return;
     if (confirm('確定要清空全校所有班級資料嗎？')) {
       this.updateState(state => {
         state.classrooms = [];
@@ -935,6 +998,7 @@ class ExamApp {
   // CSV 批次匯入與匯出模組 (支援：班級,姓名,密碼)
   // ----------------------------------------------------
   openImportCsvModal() {
+    if (!this.requireAuth('admin')) return;
     const modalHtml = `
       <div class="modal-overlay" id="modal-import-csv">
         <div class="modal-dialog" style="max-width:700px;">
@@ -1060,6 +1124,7 @@ class ExamApp {
   }
 
   executeCsvImport() {
+    if (!this.requireAuth('admin')) return;
     const rawText = (document.getElementById('csv-paste-area')?.value || '').trim();
     if (!rawText) return alert('請貼上 CSV 文字或選取檔案！');
 
@@ -1246,6 +1311,7 @@ class ExamApp {
   }
 
   openAddTeacherModal() {
+    if (!this.requireAuth('admin')) return;
     const classrooms = this.state.classrooms || [];
     const modalHtml = `
       <div class="modal-overlay" id="modal-add-teacher">
@@ -1292,6 +1358,7 @@ class ExamApp {
   }
 
   saveNewTeacher() {
+    if (!this.requireAuth('admin')) return;
     const name = document.getElementById('new-tch-name').value.trim();
     const user = document.getElementById('new-tch-user').value.trim();
     const dept = document.getElementById('new-tch-dept').value.trim() || '導師';
@@ -1329,6 +1396,7 @@ class ExamApp {
   }
 
   deleteTeacher(id) {
+    if (!this.requireAuth('admin')) return;
     const t = (this.state.teachers || []).find(item => item.id === id);
     if (!t) return;
     if (confirm(`確定要刪除【${t.name} 老師】帳號嗎？`)) {
@@ -1554,6 +1622,7 @@ class ExamApp {
   }
 
   assignTeacherToPeriod(classId, periodId, teacherId) {
+    if (!this.requireAuth('admin')) return;
     const teacher = (this.state.teachers || []).find(t => t.id === teacherId);
     this.updateState(state => {
       const cls = state.classrooms.find(c => c.classId === classId);
@@ -1567,6 +1636,7 @@ class ExamApp {
   }
 
   randomAssignTeachers() {
+    if (!this.requireAuth('admin')) return;
     const teachers = this.state.teachers || [];
     const periods = this.state.config.periods || [];
     if (teachers.length === 0) return alert('請先建立教師名單！');
@@ -1665,6 +1735,7 @@ class ExamApp {
   }
 
   saveConfigSettings() {
+    if (!this.requireAuth('admin')) return;
     const school = document.getElementById('cfg-school')?.value;
     const year = document.getElementById('cfg-year')?.value;
     const exam = document.getElementById('cfg-exam')?.value;
@@ -1698,10 +1769,14 @@ class ExamApp {
 
   // 清空所有資料（回復全新空白狀態）
   resetToEmptyState() {
+    if (!this.requireAuth('admin')) return;
     if (confirm('確定要清空所有資料嗎？這將移除所有班級、老師、點名紀錄與通報，讓您從完全空白的狀態開始自訂。')) {
-      this.state = JSON.parse(JSON.stringify(window.EMPTY_EXAM_DATA));
-      window.firebaseService.syncState(this.state);
-      this.render();
+      this.updateState(state => {
+        const empty = JSON.parse(JSON.stringify(window.EMPTY_EXAM_DATA));
+        Object.keys(empty).forEach(k => {
+          state[k] = empty[k];
+        });
+      }, '清空考務資料', '管理員清空所有班級與考務資料');
       alert('已成功清空所有考務資料，目前為全新空白系統！');
       this.switchAdminTab('classes');
     }
@@ -1709,10 +1784,14 @@ class ExamApp {
 
   // 載入國小示範資料
   loadElementaryTemplate() {
+    if (!this.requireAuth('admin')) return;
     if (confirm('確定要載入臺中市西屯區長安國小全校 32 班（一至六年級）與 32 位專屬導師名冊與密碼嗎？')) {
-      this.state = JSON.parse(JSON.stringify(window.ELEMENTARY_TEMPLATE_DATA));
-      window.firebaseService.syncState(this.state);
-      this.render();
+      this.updateState(state => {
+        const tpl = JSON.parse(JSON.stringify(window.ELEMENTARY_TEMPLATE_DATA));
+        Object.keys(tpl).forEach(k => {
+          state[k] = tpl[k];
+        });
+      }, '載入長安國小名冊', '管理員載入長安國小 32 班與 32 位專屬導師及密碼');
       alert('已成功載入長安國小全校 32 個班級與 32 位對應導師及專屬密碼！');
       this.switchAdminTab('matrix');
     }
@@ -2201,6 +2280,40 @@ class ExamApp {
     const classrooms = this.state.classrooms || [];
     const teachers = this.state.teachers || [];
 
+    if (!user) {
+      return `
+        <div class="jp-card" style="max-width:480px; margin:40px auto; padding:32px 24px; text-align:center;">
+          <div class="brand-emblem" style="margin:0 auto 16px; width:56px; height:56px; font-size:1.8rem;">🔒</div>
+          <h2 class="jp-serif" style="font-size:1.35rem; margin-bottom:8px;">請先登入導師帳號與密碼</h2>
+          <p style="font-size:0.85rem; color:var(--c-ink-sub); line-height:1.5; margin-bottom:20px;">
+            依考務安全規範，<strong>必須登入帳號與密碼才能修改與送出點名資料</strong>。<br>
+            登入後系統將自動為您帶出所負責的對應班級。
+          </p>
+
+          <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:20px; font-size:0.82rem; text-align:left;">
+            <strong>💡 導師登入提示：</strong><br>
+            • <strong>帳號</strong>：輸入<strong>教師姓名</strong>（如 <code>許秀菁</code>）或<strong>班級代碼</strong>（如 <code>101</code>）<br>
+            • <strong>密碼</strong>：輸入<strong>該班專屬密碼</strong>（如 <code>101</code>）<br>
+            • <strong>教務管理員</strong>：亦可輸入 <code>test</code> ／ 密碼 <code>12345678</code> 登入代填
+          </div>
+
+          <form onsubmit="window.app.handleInvigilatorLoginSubmit(event)" style="text-align:left;">
+            <div class="form-group">
+              <label class="form-label">教師姓名 / 班級代碼</label>
+              <input type="text" id="invig-login-user" class="form-control" placeholder="例：許秀菁 或 101" required autofocus>
+            </div>
+            <div class="form-group">
+              <label class="form-label">登入密碼</label>
+              <input type="password" id="invig-login-pwd" class="form-control" placeholder="請輸入專屬密碼" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:12px;">
+              <span>🔑</span> 驗證並進入工作台
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
     // 若老師有綁定班級，自動預選其負責班級
     let defaultClassId = user?.assignedClassId;
     if (!defaultClassId && classrooms.length > 0) {
@@ -2217,30 +2330,15 @@ class ExamApp {
               每個老師對應負責一個班級，一鍵完成應到/實到填報、登記缺席座號或通報試場狀況。
             </p>
           </div>
-          <div>
+          <div style="display:flex; align-items:center; gap:10px;">
             <span class="jp-tag" style="background:#FFF;">
-              目前教師：<strong>${user ? this.escapeHtml(user.name) : '訪客老師'}</strong>
-              ${user?.assignedClassName ? `【對應：${this.escapeHtml(user.assignedClassName)}】` : ''}
+              目前登入：<strong>${this.escapeHtml(user.name)}</strong>
+              ${user.assignedClassName ? `【對應負責：${this.escapeHtml(user.assignedClassName)}】` : (user.role === 'admin' ? '【教務處管理員】' : '')}
             </span>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.logout()">
+              <span>🚪</span> 登出切換帳號
+            </button>
           </div>
-        </div>
-
-        <!-- 快速切換老師身份（方便測試每位老師對應班級） -->
-        <div style="background:var(--c-washi-sub); padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.82rem; font-weight:700;">切換我是哪位導師：</span>
-            <select class="form-select" style="width:auto; padding:4px 10px; font-size:0.85rem;" onchange="window.app.switchTeacherPersona(this.value)">
-              <option value="">-- 點擊切換老師身份 --</option>
-              ${teachers.map(t => `
-                <option value="${t.id}" ${user?.id === t.id ? 'selected' : ''}>
-                  ${t.name} 老師（對應班級：${t.assignedClassName || '未指派'}）
-                </option>
-              `).join('')}
-            </select>
-          </div>
-          <span style="font-size:0.75rem; color:var(--c-ink-sub);">
-            系統將自動為您帶出該老師負責對應的班級資料！
-          </span>
         </div>
 
         ${classrooms.length === 0 ? `
@@ -2325,26 +2423,6 @@ class ExamApp {
     `;
   }
 
-  // 切換老師身份
-  switchTeacherPersona(teacherId) {
-    if (!teacherId) return;
-    const teacher = (this.state.teachers || []).find(t => t.id === teacherId);
-    if (teacher) {
-      this.currentUser = {
-        id: teacher.id,
-        name: teacher.name,
-        username: teacher.username,
-        role: teacher.role || 'invigilator',
-        assignedClassId: teacher.assignedClassId || '',
-        assignedClassName: teacher.assignedClassName || '',
-        department: teacher.department
-      };
-      sessionStorage.setItem('TW_EXAM_USER', JSON.stringify(this.currentUser));
-      this.render();
-      window.soundFX.playChime();
-    }
-  }
-
   populateTeacherForm(classId) {
     const cls = (this.state.classrooms || []).find(c => c.classId === classId);
     if (!cls) return;
@@ -2355,9 +2433,18 @@ class ExamApp {
   }
 
   submitInvigilatorRollCall() {
+    if (!this.requireAuth(['admin', 'invigilator'])) return;
+
     const classId = document.getElementById('invig-class-select').value;
     const cls = (this.state.classrooms || []).find(c => c.classId === classId);
     if (!cls) return alert('請選擇班級！');
+
+    // 若為導師身分且選擇非自己負責班級，提示確認
+    if (this.currentUser.role === 'invigilator' && this.currentUser.assignedClassId && this.currentUser.assignedClassId !== classId) {
+      if (!confirm(`⚠️ 提醒：您登記的負責班級為【${this.currentUser.assignedClassName}】。\n確定要替【${cls.className}】代為填報點名嗎？`)) {
+        return;
+      }
+    }
 
     const expected = Number(document.getElementById('invig-expected').value) || 0;
     const present = Number(document.getElementById('invig-present').value) || 0;
@@ -2401,6 +2488,8 @@ class ExamApp {
   }
 
   submitIssueReport() {
+    if (!this.requireAuth(['admin', 'invigilator'])) return;
+
     const classId = document.getElementById('invig-class-select')?.value || '101';
     const cls = (this.state.classrooms || []).find(c => c.classId === classId) || { className: classId };
     const type = document.getElementById('issue-type').value;
@@ -2417,18 +2506,19 @@ class ExamApp {
       content,
       status: 'pending',
       isUrgent: type === 'urgent' || type === 'paper' || type === 'student',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      reportedBy: this.currentUser ? this.currentUser.name : '監考老師'
     };
 
     this.updateState(state => {
       if (!state.issues) state.issues = [];
       state.issues.unshift(newIssue);
-    }, '突發狀況通報', `${cls.className} 通報：${content}`);
+    }, '考場狀況通報', `${cls.className} 通報：${content}`);
 
-    window.soundFX.playEmergency();
-    alert('通報已送達教務處！巡堂主管與試務人員將即時前往教室協助。');
+    window.soundFX.playWarning();
+    alert(`【${cls.className}】狀況已通報教務處！試務巡查組將立即派員至教室協助。`);
     document.getElementById('issue-content').value = '';
-    this.navigate('admin/issues');
+    this.navigate('academic');
   }
 
   // ----------------------------------------------------
@@ -2486,6 +2576,93 @@ class ExamApp {
     const res = this.login(u, p);
     if (!res.success) {
       alert(res.message);
+    } else {
+      alert(`登入成功！歡迎 ${this.currentUser.name}。`);
+      if (this.currentUser.role === 'admin') {
+        this.navigate('admin');
+      } else {
+        this.navigate('invigilator');
+      }
+    }
+  }
+
+  openLoginModal() {
+    const modalHtml = `
+      <div class="modal-overlay" id="modal-login">
+        <div class="modal-dialog" style="max-width:440px;">
+          <div class="modal-header">
+            <h3>🔑 系統帳號密碼登入認證</h3>
+            <button class="modal-close-btn" onclick="window.app.closeModal('modal-login')">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:16px; font-size:0.82rem; color:var(--c-ink);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>💡 帳號密碼說明：</strong>
+                <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:2px 8px;" onclick="window.app.fillModalTestAccount()">
+                  ⚡ 一鍵帶入管理員
+                </button>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; line-height:1.5; color:var(--c-ink-sub);">
+                • <strong>教務處管理員</strong>：帳號 <code>test</code> ／ 密碼 <code>12345678</code><br>
+                • <strong>各班導師</strong>：帳號請輸入<strong>教師姓名</strong>（如 <code>許秀菁</code>）或<strong>班級代碼</strong>（如 <code>101</code>），密碼為<strong>該班專屬密碼</strong>
+              </div>
+            </div>
+
+            <form onsubmit="window.app.handleModalLoginSubmit(event)">
+              <div class="form-group">
+                <label class="form-label">登入帳號 (管理員或教師姓名/代碼)</label>
+                <input type="text" id="modal-login-username" class="form-control" placeholder="例：test 或 101" required autofocus>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">登入密碼</label>
+                <input type="password" id="modal-login-password" class="form-control" placeholder="請輸入密碼" required>
+              </div>
+
+              <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.closeModal('modal-login')">取消</button>
+                <button type="submit" class="btn btn-primary btn-sm">確認登入</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    this.showModalContainer(modalHtml);
+  }
+
+  fillModalTestAccount() {
+    const u = document.getElementById('modal-login-username');
+    const p = document.getElementById('modal-login-password');
+    if (u) u.value = 'test';
+    if (p) p.value = '12345678';
+  }
+
+  handleModalLoginSubmit(e) {
+    e.preventDefault();
+    const u = document.getElementById('modal-login-username').value;
+    const p = document.getElementById('modal-login-password').value;
+    const res = this.login(u, p);
+    if (res.success) {
+      this.closeModal('modal-login');
+      alert(`登入成功！歡迎 ${this.currentUser.name}。已解鎖修改資料權限！`);
+      this.render();
+    } else {
+      alert(res.message);
+    }
+  }
+
+  handleInvigilatorLoginSubmit(e) {
+    e.preventDefault();
+    const u = document.getElementById('invig-login-user').value;
+    const p = document.getElementById('invig-login-pwd').value;
+    const res = this.login(u, p);
+    if (!res.success) {
+      alert(res.message);
+    } else {
+      alert(`登入成功！歡迎 ${this.currentUser.name}。`);
+      this.navigate('invigilator');
+      this.render();
     }
   }
 
@@ -2563,6 +2740,7 @@ class ExamApp {
   }
 
   openQuickAnnouncementModal() {
+    if (!this.requireAuth('admin')) return;
     this.annoTempImage = null;
     const modalHtml = `
       <div class="modal-overlay" id="modal-anno">
@@ -2764,6 +2942,7 @@ class ExamApp {
   }
 
   deleteAnnouncement(id) {
+    if (!this.requireAuth('admin')) return;
     if (confirm('確定要撤除此公告嗎？')) {
       this.updateState(state => {
         state.announcements = state.announcements.filter(a => a.id !== id);
@@ -2783,6 +2962,11 @@ class ExamApp {
             <button class="modal-close-btn" onclick="window.app.closeModal('modal-class')">&times;</button>
           </div>
           <div class="modal-body">
+            ${!this.currentUser ? `
+              <div style="background:#FFF9E6; border:1px solid #FFE082; padding:8px 12px; border-radius:var(--radius-sm); margin-bottom:12px; font-size:0.8rem; color:#795548;">
+                🔒 目前為訪客檢視模式。如需修改並儲存點名資料，請先登入帳號密碼。
+              </div>
+            ` : ''}
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
               <div class="form-group">
                 <label class="form-label">應到人數</label>
@@ -2836,6 +3020,15 @@ class ExamApp {
   }
 
   saveClassDetail(classId) {
+    if (!this.requireAuth()) return;
+
+    const cls = (this.state.classrooms || []).find(c => c.classId === classId);
+    if (this.currentUser.role === 'invigilator' && this.currentUser.assignedClassId && this.currentUser.assignedClassId !== classId) {
+      if (!confirm(`⚠️ 提醒：您登記的負責班級為【${this.currentUser.assignedClassName}】。\n確定要替【${cls ? cls.className : classId}】代為修訂點名嗎？`)) {
+        return;
+      }
+    }
+
     const exp = Number(document.getElementById('modal-exp').value) || 0;
     const pre = Number(document.getElementById('modal-pre').value) || 0;
 
@@ -2848,14 +3041,14 @@ class ExamApp {
     });
 
     this.updateState(state => {
-      const cls = state.classrooms.find(c => c.classId === classId);
-      if (cls) {
-        cls.expectedCount = exp;
-        cls.presentCount = pre;
-        cls.absentCount = absents.length;
-        cls.absentStudents = absents;
-        cls.statusReported = true;
-        cls.lastUpdated = new Date().toISOString();
+      const target = state.classrooms.find(c => c.classId === classId);
+      if (target) {
+        target.expectedCount = exp;
+        target.presentCount = pre;
+        target.absentCount = absents.length;
+        target.absentStudents = absents;
+        target.statusReported = true;
+        target.lastUpdated = new Date().toISOString();
       }
     }, '修訂點名', `維護 ${classId} 班級人數與缺席名冊`);
 
@@ -2863,6 +3056,7 @@ class ExamApp {
   }
 
   openIssueReplyModal(issueId) {
+    if (!this.requireAuth('admin')) return;
     const issue = (this.state.issues || []).find(i => i.id === issueId);
     if (!issue) return;
 
@@ -2903,6 +3097,7 @@ class ExamApp {
   }
 
   saveIssueReply(issueId) {
+    if (!this.requireAuth('admin')) return;
     const status = document.getElementById('issue-status-select').value;
     const reply = document.getElementById('issue-reply-text').value.trim();
 
