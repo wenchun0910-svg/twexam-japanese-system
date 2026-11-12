@@ -94,13 +94,13 @@ class ExamApp {
 
   requireAuth(requiredRole = 'any') {
     if (!this.currentUser) {
-      alert('⚠️ 權限管制：必須登入帳號與密碼才能修改資料！\n\n【教務管理員】帳號：test ／ 密碼：12345678\n【各班導師】請輸入教師姓名或班級代碼與密碼');
+      alert('⚠️ 權限管制：進行新增、修改或刪除資料前，必須先登入帳號與密碼！');
       this.openLoginModal();
       return false;
     }
 
     if (requiredRole === 'admin' && this.currentUser.role !== 'admin') {
-      alert(`⚠️ 權限不足：您目前是以「${this.currentUser.name} (導師)」身分登入。\n此項全校設定與管理功能僅限教務處管理員 (test) 操作！`);
+      alert(`⚠️ 權限不足：您目前是以「${this.currentUser.name} (導師)」身分登入。\n此項全校設定與管理功能僅限教務處管理員操作！`);
       return false;
     }
 
@@ -195,7 +195,7 @@ class ExamApp {
       }
     }
 
-    return { success: false, message: '帳號或密碼錯誤！\n\n• 管理員帳號：test ／ 密碼：12345678\n• 導師：請輸入教師姓名或班級代碼與密碼' };
+    return { success: false, message: '帳號或密碼錯誤，請重新確認後再試！' };
   }
 
   logout() {
@@ -349,11 +349,11 @@ class ExamApp {
             <div style="display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.15rem;">🔒</span>
               <span style="font-size:0.85rem; color:#795548;">
-                <strong>目前為訪客檢視模式</strong>：依考務安全規範，<strong>必須登入帳號與密碼才能修改資料</strong>（包含編輯班級、導師名冊、考程時間或發布試題勘誤）。
+                <strong>目前為唯讀檢視模式</strong>：依考務安全規範，<strong>進行任何新增、修改或刪除操作皆必須先驗證帳號與密碼</strong>。
               </span>
             </div>
             <button class="btn btn-primary btn-sm" onclick="window.app.openLoginModal()">
-              <span>🔑</span> 登入管理員 (test / 12345678)
+              <span>🔑</span> 登入驗證身分
             </button>
           </div>
         ` : (this.currentUser.role !== 'admin' ? `
@@ -361,7 +361,7 @@ class ExamApp {
             <div style="display:flex; align-items:center; gap:8px;">
               <span>👨‍🏫</span>
               <span style="font-size:0.85rem; color:#1B4F72;">
-                您目前以 <strong>${this.escapeHtml(this.currentUser.name)} 老師</strong>（負責：${this.escapeHtml(this.currentUser.assignedClassName || '未指派')}）身分登入。教務處管理設定僅限管理員 (test) 修改，班級點名填報請至 <a href="#invigilator" style="font-weight:700; text-decoration:underline;">導師工作台</a>。
+                您目前以 <strong>${this.escapeHtml(this.currentUser.name)} 老師</strong>（負責：${this.escapeHtml(this.currentUser.assignedClassName || '未指派')}）身分登入。全校考務設定與名冊管理需管理員權限，班級點名填報請至 <a href="#invigilator" style="font-weight:700; text-decoration:underline;">導師工作台</a>。
               </span>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="window.app.openLoginModal()">
@@ -1285,13 +1285,16 @@ class ExamApp {
                     `}
                   </td>
                   <td>
-                    <code style="font-family:var(--font-mono); font-weight:700; color:var(--c-ai); background:var(--c-washi-sub); padding:3px 8px; border-radius:var(--radius-sm); border:1px solid var(--c-border);">
-                      ${this.escapeHtml(t.password || '12345678')}
-                    </code>
+                    ${this.currentUser && this.currentUser.role === 'admin' ? `
+                      <code style="font-family:var(--font-mono); font-weight:700; color:var(--c-ai); background:var(--c-washi-sub); padding:3px 8px; border-radius:var(--radius-sm); border:1px solid var(--c-border);">
+                        ${this.escapeHtml(t.password || '已設定')}
+                      </code>
+                    ` : `
+                      <span style="font-family:var(--font-mono); color:var(--c-ink-light); letter-spacing:2px;">••••••••</span>
+                    `}
                   </td>
                   <td>
                     <code style="font-family:var(--font-mono);">${this.escapeHtml(t.username)}</code>
-                    <small style="color:var(--c-ink-light); display:block; font-size:0.7rem;">(亦可用姓名或「${t.assignedClassName || t.username}」登入)</small>
                   </td>
                   <td>
                     <span class="stamp ${t.role === 'author' ? 'stamp-shuin' : 'stamp-ai'}">
@@ -1335,7 +1338,7 @@ class ExamApp {
             </div>
             <div class="form-group">
               <label class="form-label">登入密碼</label>
-              <input type="text" id="new-tch-pwd" class="form-control" placeholder="自訂密碼或預設 12345678" value="12345678">
+              <input type="password" id="new-tch-pwd" class="form-control" placeholder="請設定教師專屬密碼">
             </div>
             <div class="form-group">
               <label class="form-label">對應負責班級 (每個老師對應一個班級)</label>
@@ -1362,10 +1365,11 @@ class ExamApp {
     const name = document.getElementById('new-tch-name').value.trim();
     const user = document.getElementById('new-tch-user').value.trim();
     const dept = document.getElementById('new-tch-dept').value.trim() || '導師';
-    const pwd = document.getElementById('new-tch-pwd')?.value.trim() || '12345678';
+    const pwd = document.getElementById('new-tch-pwd')?.value.trim();
     const classId = document.getElementById('new-tch-class').value;
 
     if (!name || !user) return alert('請填寫姓名與帳號！');
+    if (!pwd) return alert('請設定登入密碼！');
 
     const cls = (this.state.classrooms || []).find(c => c.classId === classId);
     const newId = 'tch-' + Date.now();
@@ -2282,31 +2286,23 @@ class ExamApp {
 
     if (!user) {
       return `
-        <div class="jp-card" style="max-width:480px; margin:40px auto; padding:32px 24px; text-align:center;">
+        <div class="jp-card" style="max-width:440px; margin:40px auto; padding:32px 24px; text-align:center;">
           <div class="brand-emblem" style="margin:0 auto 16px; width:56px; height:56px; font-size:1.8rem;">🔒</div>
-          <h2 class="jp-serif" style="font-size:1.35rem; margin-bottom:8px;">請先登入導師帳號與密碼</h2>
+          <h2 class="jp-serif" style="font-size:1.35rem; margin-bottom:8px;">請先登入帳號與密碼</h2>
           <p style="font-size:0.85rem; color:var(--c-ink-sub); line-height:1.5; margin-bottom:20px;">
-            依考務安全規範，<strong>必須登入帳號與密碼才能修改與送出點名資料</strong>。<br>
-            登入後系統將自動為您帶出所負責的對應班級。
+            依考務安全規範，<strong>進行班級點名填報、修改缺席或送出狀況通報前，請先輸入帳號與密碼進行驗證</strong>。
           </p>
-
-          <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:20px; font-size:0.82rem; text-align:left;">
-            <strong>💡 導師登入提示：</strong><br>
-            • <strong>帳號</strong>：輸入<strong>教師姓名</strong>（如 <code>許秀菁</code>）或<strong>班級代碼</strong>（如 <code>101</code>）<br>
-            • <strong>密碼</strong>：輸入<strong>該班專屬密碼</strong>（如 <code>101</code>）<br>
-            • <strong>教務管理員</strong>：亦可輸入 <code>test</code> ／ 密碼 <code>12345678</code> 登入代填
-          </div>
 
           <form onsubmit="window.app.handleInvigilatorLoginSubmit(event)" style="text-align:left;">
             <div class="form-group">
-              <label class="form-label">教師姓名 / 班級代碼</label>
-              <input type="text" id="invig-login-user" class="form-control" placeholder="例：許秀菁 或 101" required autofocus>
+              <label class="form-label">登入帳號</label>
+              <input type="text" id="invig-login-user" class="form-control" placeholder="請輸入帳號" required autofocus>
             </div>
             <div class="form-group">
               <label class="form-label">登入密碼</label>
-              <input type="password" id="invig-login-pwd" class="form-control" placeholder="請輸入專屬密碼" required>
+              <input type="password" id="invig-login-pwd" class="form-control" placeholder="請輸入密碼" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:12px;">
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:16px;">
               <span>🔑</span> 驗證並進入工作台
             </button>
           </form>
@@ -2534,39 +2530,24 @@ class ExamApp {
             <p style="font-size:0.8rem; color:var(--c-ink-sub); margin-top:4px;">教務行政管理端與導師監考工作台</p>
           </div>
 
-          <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:20px; font-size:0.82rem; color:var(--c-ink);">
-            <strong>🔑 測試帳號提示：</strong><br>
-            帳號：<code style="font-family:var(--font-mono); font-weight:700;">test</code> 密碼：<code style="font-family:var(--font-mono); font-weight:700;">12345678</code><br>
-            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="window.app.fillTestAccount()">
-              ⚡ 一鍵填入測試管理員帳號密碼
-            </button>
-          </div>
-
           <form onsubmit="window.app.handleLoginSubmit(event)">
             <div class="form-group">
-              <label class="form-label">使用者帳號 (管理員或教師姓名/代號)</label>
-              <input type="text" id="login-username" class="form-control" placeholder="請輸入帳號 (例如: test 或 t101)" required>
+              <label class="form-label">使用者帳號</label>
+              <input type="text" id="login-username" class="form-control" placeholder="請輸入帳號" required autofocus>
             </div>
 
             <div class="form-group">
-              <label class="form-label">密碼</label>
-              <input type="password" id="login-password" class="form-control" placeholder="請輸入密碼 (12345678)" required>
+              <label class="form-label">登入密碼</label>
+              <input type="password" id="login-password" class="form-control" placeholder="請輸入密碼" required>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:12px;">
-              登入系統
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:16px;">
+              <span>🔑</span> 登入系統
             </button>
           </form>
         </div>
       </div>
     `;
-  }
-
-  fillTestAccount() {
-    const u = document.getElementById('login-username');
-    const p = document.getElementById('login-password');
-    if (u) u.value = 'test';
-    if (p) p.value = '12345678';
   }
 
   handleLoginSubmit(e) {
@@ -2589,39 +2570,30 @@ class ExamApp {
   openLoginModal() {
     const modalHtml = `
       <div class="modal-overlay" id="modal-login">
-        <div class="modal-dialog" style="max-width:440px;">
+        <div class="modal-dialog" style="max-width:420px;">
           <div class="modal-header">
-            <h3>🔑 系統帳號密碼登入認證</h3>
+            <h3>🔑 系統帳號密碼驗證</h3>
             <button class="modal-close-btn" onclick="window.app.closeModal('modal-login')">&times;</button>
           </div>
           <div class="modal-body">
-            <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-radius:var(--radius-sm); padding:12px; margin-bottom:16px; font-size:0.82rem; color:var(--c-ink);">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>💡 帳號密碼說明：</strong>
-                <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:2px 8px;" onclick="window.app.fillModalTestAccount()">
-                  ⚡ 一鍵帶入管理員
-                </button>
-              </div>
-              <div style="margin-top:6px; font-size:0.8rem; line-height:1.5; color:var(--c-ink-sub);">
-                • <strong>教務處管理員</strong>：帳號 <code>test</code> ／ 密碼 <code>12345678</code><br>
-                • <strong>各班導師</strong>：帳號請輸入<strong>教師姓名</strong>（如 <code>許秀菁</code>）或<strong>班級代碼</strong>（如 <code>101</code>），密碼為<strong>該班專屬密碼</strong>
-              </div>
+            <div style="background:var(--c-washi-sub); border:1px solid var(--c-border); border-left:4px solid var(--c-ai); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:16px; font-size:0.85rem; color:var(--c-ink-sub);">
+              🔒 系統安全管制：進行<strong>新增、修改或刪除</strong>考務資料前，請先輸入帳號與密碼進行驗證。
             </div>
 
             <form onsubmit="window.app.handleModalLoginSubmit(event)">
               <div class="form-group">
-                <label class="form-label">登入帳號 (管理員或教師姓名/代碼)</label>
-                <input type="text" id="modal-login-username" class="form-control" placeholder="例：test 或 101" required autofocus>
+                <label class="form-label">帳號</label>
+                <input type="text" id="modal-login-username" class="form-control" placeholder="請輸入帳號" required autofocus>
               </div>
 
               <div class="form-group">
-                <label class="form-label">登入密碼</label>
+                <label class="form-label">密碼</label>
                 <input type="password" id="modal-login-password" class="form-control" placeholder="請輸入密碼" required>
               </div>
 
               <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.closeModal('modal-login')">取消</button>
-                <button type="submit" class="btn btn-primary btn-sm">確認登入</button>
+                <button type="submit" class="btn btn-primary btn-sm">確認驗證登入</button>
               </div>
             </form>
           </div>
@@ -2631,13 +2603,6 @@ class ExamApp {
     this.showModalContainer(modalHtml);
   }
 
-  fillModalTestAccount() {
-    const u = document.getElementById('modal-login-username');
-    const p = document.getElementById('modal-login-password');
-    if (u) u.value = 'test';
-    if (p) p.value = '12345678';
-  }
-
   handleModalLoginSubmit(e) {
     e.preventDefault();
     const u = document.getElementById('modal-login-username').value;
@@ -2645,7 +2610,7 @@ class ExamApp {
     const res = this.login(u, p);
     if (res.success) {
       this.closeModal('modal-login');
-      alert(`登入成功！歡迎 ${this.currentUser.name}。已解鎖修改資料權限！`);
+      alert(`登入成功！歡迎 ${this.currentUser.name}。已解鎖資料操作權限！`);
       this.render();
     } else {
       alert(res.message);
